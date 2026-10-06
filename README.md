@@ -75,6 +75,16 @@ python -m substrata.run --resume runs\<run>\checkpoint.pt
 Each run writes `runs/<name>_<time>/` with `config.json`, `metrics.csv` and `checkpoint.pt`.
 Ctrl-C stops cleanly and saves a checkpoint.
 
+## Lab notebook
+
+`reports/lab-notebook.md` records each experiment with charts. To add a finished run:
+
+```powershell
+python reports/make_charts.py ingest runs\<run_dir> --label <label>
+# add the label to reports/runs.toml, then
+python reports/make_charts.py charts
+```
+
 ## Tests
 
 ```powershell
@@ -88,5 +98,6 @@ substrata/   engine: config, grid, genome, world, metrics, observers, run
 configs/     run configurations (trial_a, smoke)
 bench/       performance benchmark and results
 docs/        design principles and notes
+reports/     lab notebook, chart script, chart data and figures
 tests/       engine sanity checks
 ```

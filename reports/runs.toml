@@ -1,0 +1,19 @@
+# Runs that appear in the lab notebook. Order fixes each run's chart color
+# (color follows the run, never its position in a figure), so append new runs
+# at the end and never reorder.
+#
+# Add a finished run:
+#   python reports/make_charts.py ingest runs\<run_dir> --label <label>
+#   then add a [[run]] entry here and re-run:  python reports/make_charts.py charts
+
+[[run]]
+label = "trial_a"
+name = "Trial A: uniform, plentiful"
+
+[[run]]
+label = "trial_b"
+name = "Trial B: patchy, scarce"
+
+[[run]]
+label = "trial_b_noplast"
+name = "Trial B, plasticity off"
