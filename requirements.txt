@@ -1,3 +1,7 @@
 # torch is installed separately with the CUDA index URL (see README)
 numpy
 rerun-sdk
+
+# lab notebook charts
+matplotlib
+pandas
