@@ -1,4 +1,4 @@
-# Substrata: Design Principles (outline v0.3)
+# Substrata: Design Principles (outline v0.4)
 
 *Origin: the original Stratum concept, a cellular automaton whose cells learn and evolve their own rules.*
 
@@ -76,7 +76,8 @@
 
 - Python + PyTorch, CUDA on the RTX 4070 Super (12 GB)
 - Batched per-cell networks with masks
-- Starting scale to be set by benchmark (expect 128 to 256 square grid)
+- Benchmark (bench/results.csv): about 4.5 billion weight updates per second, roughly independent of how they are split between cells and network size; memory only binds at 256 squared with hidden 64 and message 16
+- **Starting configuration (option A):** 128 x 128 grid, hidden 32, message 8; scale to 256 squared once something interesting appears
 
 ## 10. Observation
 
@@ -101,10 +102,30 @@
 | Energy transfer | on | transfer off | cooperation and collective formation rates |
 | No abstract material | off | material field | material vs. none |
 | Random seed learning rule | random | designed seed rule | time-boxed trial; switch to designed rule if nothing emerges |
+| Senescence (max lifespan) | 300 ticks | `life.lifespan` | very long lifespan; does turnover continue from starvation alone? |
+| Inflow on empty sites is lost | lost | (not yet a switch) | let empty sites store inflow for newborns |
+| Energy in a dying cell is lost | lost | (not yet a switch) | return it to neighbors (decomposition) |
+| Expression gate is binary | hard on/off, every 10 ticks | `layers.express_every` | soft gate; faster updates |
 
 ## 12. Open questions
 
-- Exact generation count for the random seed trial (after benchmark)
+- Exact generation count for the random seed trial: provisional 300,000 ticks (~1,000 generations at lifespan 300)
+- With uniform inflow and no bonds, a cell's brain has little to earn; expect early evolution to shrink networks (see section 13)
 - Definition of an "object" for assembly
-- Maximum network size per cell; message width (set by GPU benchmark)
 - Mutation rates and what parts of the genome mutate
+
+## 13. Engine v0 (built)
+
+What exists in code now, and the choices made inside it. All values live in config files.
+
+- **Tick order:** sense, think, learn, energy, die, reproduce
+- **Senses:** own state (8), neighbor messages (8 x 8), neighbor occupancy (8), own energy, local inflow, group context (8, zeros until bonds), bias
+- **Outputs:** next state, message, energy transfer per neighbor, reproduce, reproduction direction, bond per neighbor (unused until bonds)
+- **Genome:** initial weights, mask logits (structure), plasticity rule per layer (eta, A, B, C, D), expression matrix and bias
+- **Phenotype:** weights copied from the genome at birth, then changed by plasticity; never written back to the genome
+- **Expression:** hidden units switched on or off from context (energy, inflow, crowding, age, group context)
+- **Energy:** inflow on occupied sites; costs are base metabolism, a compute cost proportional to active (masked and expressed) weights, and a bandwidth cost per unit of message; transfers up to 10% of energy per tick, 5% lost in transit; storage capped at 50
+- **Death:** energy at or below zero, or age past an individual lifespan (300 +/- 20%)
+- **Reproduction:** energy above 20 and the cell chooses to; child goes to an empty neighbor chosen by the cell; conflicts resolved at random; child receives half the parent's energy and a mutated genome
+- **Layer 3 modes:** `off` (exact copies), `frozen_learning` (plasticity and expression genes never mutate), `on`; `neutral` not built yet
+- **Not built yet:** bonds (Layer 2), neutral drift control, rewiring, heritable marks, assembly and causal emergence metrics

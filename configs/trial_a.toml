@@ -1,0 +1,30 @@
+# Random seed trial, option A: 128 x 128, hidden 32, message 8.
+# Layer 1 (plasticity) on, Layer 2 (bonds) not built yet, Layer 3 (evolution) on.
+# Single random genome cloned everywhere, so the Layer 3 "off" control (ladder B)
+# can start from exactly the same place.
+
+name = "trial_a"
+seed = 0
+ticks = 300000          # ~1,000 generations at lifespan 300
+
+[substrate]
+grid = 128
+inflow = 0.5
+
+[cell]
+hidden = 32
+msg = 8
+
+[life]
+seed_mode = "clone"
+lifespan = 300
+
+[layers]
+plasticity = true
+expression = "context"
+layer3 = "on"
+
+[observe]
+metrics_every = 10
+image_every = 100
+rerun = "spawn"

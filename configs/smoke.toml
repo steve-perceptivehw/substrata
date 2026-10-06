@@ -1,0 +1,20 @@
+# Tiny world for checking that everything runs (CPU is fine).
+name = "smoke"
+ticks = 600
+device = "auto"
+
+[substrate]
+grid = 32
+
+[cell]
+hidden = 16
+msg = 4
+
+[life]
+lifespan = 100
+
+[observe]
+metrics_every = 10
+image_every = 50
+rerun = "none"
+checkpoint_every = 0
