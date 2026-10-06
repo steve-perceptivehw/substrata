@@ -81,6 +81,31 @@ def test_plasticity_off_leaves_weights_at_genome():
     assert torch.allclose(w.W1[a], w.genome["W1g"][a])
 
 
+def test_inflow_fields_keep_their_mean():
+    from substrata.inflow import InflowField
+    for field in ["uniform", "patches", "gradient"]:
+        for season in ["none", "global", "wave", "drift"]:
+            cfg = C.load("configs/smoke.toml", [f"substrate.field={field}", f"substrate.season={season}",
+                                                "substrate.contrast=0.8", "substrate.inflow=0.35",
+                                                "substrate.season_period=100"])
+            f = InflowField(cfg, torch.device("cpu"))
+            mean = torch.stack([f.at(t) for t in range(0, 100, 5)]).mean()
+            assert abs(float(mean) - 0.35) < 0.01, (field, season, float(mean))
+            assert float(f.at(37).min()) >= 0
+
+
+def test_energy_conserved_with_moving_seasons():
+    w = small(**{"substrate.field": "patches", "substrate.contrast": 0.8, "substrate.season": "wave",
+                 "substrate.season_period": 50})
+    for _ in range(60):
+        before = w.total_energy()
+        w.reset_stats()
+        w.step()
+        st = {k: float(v) for k, v in w.st.items()}
+        expected = before + st["inflow_in"] - st["cost_out"] - st["transit_loss"] - st["overflow"] - st["death_loss"]
+        assert abs(w.total_energy() - expected) < 1e-2 * max(1.0, abs(before))
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

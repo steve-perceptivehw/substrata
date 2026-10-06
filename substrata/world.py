@@ -21,6 +21,7 @@ import torch
 from . import genome as gn
 from . import grid
 from .config import Config
+from .inflow import InflowField
 
 K = grid.K
 
@@ -60,12 +61,8 @@ class World:
 
     def _init_population(self):
         cfg, N = self.cfg, self.N
-        self.inflow = torch.full((N,), cfg.substrate.inflow, device=self.dev)
-        if cfg.substrate.inflow_field_file:
-            import numpy as np
-            f = torch.as_tensor(np.load(cfg.substrate.inflow_field_file), dtype=torch.float32, device=self.dev)
-            assert f.shape == (self.G, self.G), "inflow field must be grid x grid"
-            self.inflow = f.reshape(-1)
+        self.field = InflowField(cfg, self.dev)
+        self.inflow = self.field.at(0)
 
         if cfg.life.seed_mode == "clone":
             one = gn.random(1, self.shp, self.dev, self.rng)
@@ -147,6 +144,8 @@ class World:
         En, L = cfg.energy, cfg.life
         alive = self.alive
         alive_f = alive.float()
+        if not self.field.static:
+            self.inflow = self.field.at(self.tick)
 
         if self.tick % cfg.layers.express_every == 0:
             self._express(alive.nonzero().squeeze(1))

@@ -53,5 +53,7 @@ def compute(w) -> dict:
         div_masks=float((g["M1l"][a] > 0).float().reshape(n, -1)[:, w._col_idx].std(0).mean()) if n > 1 else 0.0,
         # how far learning has moved the weights from the genome
         weight_drift=float((w.W1[a] - g["W1g"][a]).abs().mean()),
+        # habitat match: inflow where cells live vs. the grid average (1 = no preference)
+        habitat_match=float(w.inflow[a].mean() / w.inflow.mean().clamp(min=1e-9)),
     )
     return m

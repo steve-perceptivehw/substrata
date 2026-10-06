@@ -1,4 +1,4 @@
-# Substrata: Design Principles (outline v0.4)
+# Substrata: Design Principles (outline v0.5)
 
 *Origin: the original Stratum concept, a cellular automaton whose cells learn and evolve their own rules.*
 
@@ -94,7 +94,7 @@
 | Assumption | Default | Switch | How to test |
 |---|---|---|---|
 | Fixed topology | on | rewiring | compare emergence with rewiring enabled |
-| Uniform inflow | uniform | inflow field values | spatial / seasonal inflow runs |
+| Uniform inflow | uniform (trial A) | `substrate.field`, `substrate.season` | trial B (patches, mild scarcity), trial C (travelling season) |
 | Context-dependent expression | on | expression mode | fixed expression vs. context |
 | Heritable marks | off | marks on | compare adaptation speed |
 | Bond scaffold | on | Layer 2 off | flat vs. two-layer |
@@ -128,4 +128,13 @@ What exists in code now, and the choices made inside it. All values live in conf
 - **Death:** energy at or below zero, or age past an individual lifespan (300 +/- 20%)
 - **Reproduction:** energy above 20 and the cell chooses to; child goes to an empty neighbor chosen by the cell; conflicts resolved at random; child receives half the parent's energy and a mutated genome
 - **Layer 3 modes:** `off` (exact copies), `frozen_learning` (plasticity and expression genes never mutate), `on`; `neutral` not built yet
+- **Inflow field:** spatial shape (uniform, patches, gradient, file) times a time pattern (none, global season, travelling wave, drifting patches); always normalized to the configured mean, so runs differ in where and when energy arrives, not how much
+- **Habitat match metric:** inflow where cells live divided by the grid average (1 = no preference)
 - **Not built yet:** bonds (Layer 2), neutral drift control, rewiring, heritable marks, assembly and causal emergence metrics
+
+## 14. Trial sequence
+
+- **Trial A:** uniform inflow 0.5. Baseline; energy plentiful, space binds
+- **Trial B:** mean inflow 0.35, patches (contrast 0.8, scale 16). About 39% of site-ticks fall below a typical early cell's cost
+- **Trial C:** trial B plus a travelling season (period 600 ticks, about two lifespans; amplitude 0.6). About 49% of site-ticks below cost
+- Season period relative to lifespan decides who responds: much longer than a lifespan and evolution can track it; comparable to a lifespan and only learning within life can

@@ -17,8 +17,16 @@ from typing import Any
 class SubstrateCfg:
     grid: int = 128                 # grid is grid x grid sites, torus wraparound
     rewiring: bool = False          # reserved; topology is fixed for now
-    inflow: float = 0.5             # uniform value of the inflow field (energy / site / tick)
-    inflow_field_file: str = ""     # optional .npy (grid x grid) that replaces the uniform field
+    inflow: float = 0.5             # mean of the inflow field (energy / site / tick), over space and time
+    field: str = "uniform"          # spatial shape: "uniform", "patches", "gradient", "file" (see inflow.py)
+    contrast: float = 0.0           # 0 = flat, 1 = poorest sites get almost nothing
+    patch_scale: float = 12.0       # typical patch size in sites ("patches")
+    field_seed: int = 1             # which random patch layout
+    inflow_field_file: str = ""     # .npy (grid x grid) for field = "file"
+    season: str = "none"            # "none", "global", "wave", "drift"
+    season_period: int = 2000       # ticks per season cycle ("global", "wave")
+    season_amp: float = 0.5         # 0 to 1, size of the seasonal swing
+    drift_every: int = 50           # ticks per one-site slide of the pattern ("drift")
 
 
 @dataclass
@@ -76,7 +84,7 @@ class ObserveCfg:
     metrics_every: int = 10
     image_every: int = 100
     channels: list = field(default_factory=lambda: [
-        "energy", "genome", "age", "active_params", "messages", "transfers", "generation"])
+        "energy", "genome", "inflow", "age", "active_params", "messages", "transfers", "generation"])
     rerun: str = "spawn"            # "spawn" (local viewer), "save" (.rrd file), "serve" (web viewer on LAN), "none"
     serve_port: int = 9090
     checkpoint_every: int = 20000

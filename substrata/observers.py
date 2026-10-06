@@ -59,6 +59,10 @@ def render(w, channels) -> dict:
             img = scalar(w.msg.abs().mean(1), 0, 1)
         elif ch == "transfers":
             img = scalar(w.give_out, 0, w.cfg.energy.transfer_rate * w.cfg.energy.max)
+        elif ch == "inflow":
+            v = w.inflow.view(G, G).cpu().numpy()
+            out[ch] = colormap(v / max(float(w.field.base.max()) * w.cfg.substrate.inflow * (1 + w.cfg.substrate.season_amp), 1e-9))
+            continue          # inflow is shown everywhere, occupied or not
         elif ch == "generation":
             a = w.alive
             hi = float(w.gen[a].max()) if a.any() else 1.0
@@ -104,6 +108,7 @@ CHART_GROUPS = {  # each group shares an axis, so keep similar scales together
     "bandwidth": ["msg_bandwidth"],
     "learning": ["weight_drift"],
     "generations": ["generation_mean"],
+    "habitat": ["habitat_match"],
     "diversity": ["div_weights", "div_learning", "div_masks"],
 }
 

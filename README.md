@@ -61,6 +61,13 @@ python -m substrata.run --config configs/trial_a.toml --rerun serve
 # record to a file instead of a live viewer (open later with: rerun runs\<run>\recording.rrd)
 python -m substrata.run --config configs/trial_a.toml --rerun save
 
+# trials B (patchy, mild scarcity) and C (plus a travelling season)
+python -m substrata.run --config configs/trial_b.toml
+python -m substrata.run --config configs/trial_c.toml
+
+# preview an inflow field without running (stats, optional picture)
+python -m substrata.inflow --config configs/trial_c.toml --png field.png
+
 # continue a stopped run
 python -m substrata.run --resume runs\<run>\checkpoint.pt
 ```
