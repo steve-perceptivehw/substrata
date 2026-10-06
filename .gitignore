@@ -5,3 +5,7 @@ __pycache__/
 runs/
 .vscode/
 .idea/
+
+# Obsidian vault settings (the repo doubles as a vault)
+.obsidian/
+.trash/
