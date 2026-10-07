@@ -141,10 +141,11 @@ def charts():
            [("occupancy", "Grid occupancy", "share of sites alive", 1),
             ("starved_share", "Deaths by starvation", "share of deaths", 1),
             ("overflow", "Energy lost to full storage", "per tick, whole world", 1)], runs, ab)
-    panels("fig5_plasticity_test.png", "Does learning pay? Same world, plasticity on vs. off",
-           [("energy_mean", "Mean cell energy", "energy", 1),
-            ("occupancy", "Grid occupancy", "share of sites alive", 1),
-            ("active_params_frac", "Active weights", "share of maximum network", 1)],
+    panels("fig5_plasticity_test.png", "Same patchy world, learning on vs. off",
+           [("transfer_per_cell", "Energy given to neighbors", "per cell per tick", 1),
+            ("eta_mean", "Plasticity rate (genome)", "mean |learning rate|", 1),
+            ("starved_share", "Deaths by starvation", "share of deaths", 1),
+            ("occupancy", "Grid occupancy", "share of sites alive", 1)],
            runs, ["trial_b", "trial_b_noplast"], need_all=True)
 
 

@@ -16,8 +16,9 @@ Status key: **observed** (seen in data), **supported** (seen more than once, or 
 2. **Kin selection explains the collapse.** *Open.* Sharing is cheap when neighbors are relatives and costly when they aren't. Test: the Layer 3 "off" control keeps every cell a clone, so this predicts sharing never collapses there.
 3. **Scarcity shrinks brains.** *Observed (trial B).* Under patchy, scarce energy, the share of the network in use fell steadily (active weights 0.22 to 0.18). With plentiful energy (trial A) it did not fall until late in the run.
 4. **Sharing was feeding the frontier.** *Observed (trial B).* Starvation began exactly when sharing collapsed, and occupancy dipped. Before the collapse, energy passed from rich patches kept edge cells alive.
-5. **Both worlds converged on a similar plasticity rate.** *Observed, with a caveat.* The genome's learning rate rose about 50% in both runs and leveled near 0.0082. The ceiling built into the engine is 0.01, so the plateau may be that ceiling rather than an optimum.
-6. **Does learning pay?** *Open; test running.* Trial B with plasticity off is the comparison.
+5. **The plasticity rate is under selection, not drifting.** *Supported (control run).* The genome's learning rate rose about 50% in both plastic worlds. In the plasticity-off control, where those genes do nothing, it stayed flat. The plateau near 0.0082 may still be the engine's ceiling of 0.01.
+6. **Learning did not pay for the population.** *Observed (trial B vs. plasticity off).* With learning switched off, the world held slightly more cells (about 1 to 2%), more energy per cell, and far less starvation. Trial criterion 2 is not met in this world.
+7. **Learning sped up the sharing collapse.** *Observed (1 comparison).* With learning on, sharing collapsed in a sharp sweep around generation 400. With learning off, there was no sweep: sharing eroded slowly over 1,800 generations and was still at about 0.6 per tick at the end. The plasticity rate rose during the same window as the sweep.
 
 ---
 
@@ -84,13 +85,34 @@ Status key: **observed** (seen in data), **supported** (seen more than once, or 
 
 ---
 
-## Entry 4: Trial B, plasticity off (running)
+## Entry 4: Trial B, plasticity off (2026-10-07)
 
-**Setup.** Identical to trial B, with Layer 1 learning switched off: cells live their whole lives with the weights they inherited.
+**Setup.** Identical to trial B (same seed, same patchy field, same starting clone) with Layer 1 learning switched off: cells live their whole lives with the weights they inherited. 300,000 ticks, about 1,880 generations. Run `trial_b_noplast_20261006-184011`.
 
-**Question.** Does learning during life pay in a patchy, scarce world? If it does, the plasticity-on world should hold more cells, more energy, or both.
+**Question.** Does learning during life pay in a patchy, scarce world?
 
-*Results and figure 5 to be added when the run finishes.*
+![Learning on vs. off](figures/fig5_plasticity_test.png)
+
+**Observed.**
+
+| Measure (generations ~950 to 1,850) | Learning on | Learning off |
+|---|---|---|
+| Population | 9,909 | 10,042 |
+| Mean cell energy | 31.5 | 33.9 |
+| Deaths by starvation | 1.8% | 0.3% |
+| Energy given to neighbors (per cell per tick) | 0.03 | 0.78 |
+| Plasticity rate (genome) | 0.0083 | 0.0056 |
+| Active weights (share of network) | 0.19 | 0.20 |
+
+- **No advantage for learning.** The learning-off world was slightly larger and better fed throughout the run, and starvation stayed near zero far longer.
+- **No sharp sweep without learning.** Sharing drifted down gradually from about 1.7 to 0.6 per tick across the whole run, with no diversity dip. With learning on, it crashed from about 2.0 to near zero between generations 300 and 500.
+- **The plasticity rate stayed flat without learning** (0.0055 at the start, 0.0054 at the end), while it rose about 50% with learning on. With learning off those genes have no effect, so this run is a clean drift baseline for them.
+- Message bandwidth was lower throughout without learning (about 4.7 vs. 7.5 late in the run).
+
+**Interpretation.**
+- The learning rule here is Hebbian: it has no reward signal, so cells are not "learning" that selfishness pays. A more likely reading is that a plasticity gene is a powerful lever. One mutation to the learning rule can change how every weight drifts over a lifetime, including the weights that control giving. A lineage whose rule happened to shut off giving during life gained the selfish advantage all at once, which looks like a sweep. Without plasticity, the same change has to accumulate weight by weight, which looks like slow erosion.
+- If that is right, learning made the population more *evolvable*, and in this world evolvability was spent on defection. This is a hypothesis; it could be tested by checking whether the winning lineage's weights move toward less giving during each lifetime.
+- The outcome is a useful negative: in a world where the main pressure is a social dilemma and nothing changes within a lifetime, learning during life has little to offer and can make the commons collapse faster. Trial C (a season that changes within a lifetime) is the world where learning should have its best chance.
 
 ---
 
@@ -98,7 +120,9 @@ Status key: **observed** (seen in data), **supported** (seen more than once, or 
 
 | Question | Test | Status |
 |---|---|---|
-| Does learning during life pay? | Trial B vs. trial B with plasticity off | Running |
+| Does learning during life pay? | Trial B vs. trial B with plasticity off | Done: no, not in trial B |
+| Does learning pay when conditions change within a life? | Trial C with and without plasticity | Next run |
+| Did the plastic lineage learn to stop giving during each life? | Track transfer output vs. age in the winning lineage | Idea |
 | Is the sharing collapse kin selection? | Ladder B (Layer 3 off, everyone stays a clone): sharing should persist | Queued |
 | Is the plasticity plateau a ceiling? | Rerun trial B with `layers.eta_scale = 0.05` | Idea |
 | Can bonds rescue cooperation? | Build Layer 2 (bonds with shared energy pools); rerun trial B | Next build |
