@@ -99,11 +99,14 @@ dl.keys dd { margin: 0; color: var(--muted); }
   <aside>
     <section>
       <h1>Swarmkeeper</h1>
-      <p class="lede">Teach your critters with treats. What they learn today fades with them; what you reward decides who breeds tonight.</p>
+      <p class="lede">Teach your critters with treats. Fetchers fill the larder, which feeds the burrow at night; raiders come to steal it, and only a swarm can drive one off. What they learn fades with them; who you feed decides who breeds.</p>
       <div class="stats">
         <div class="stat"><b id="sDay">1</b><span>day</span></div>
         <div class="stat"><b id="sPop">0</b><span>critters</span></div>
         <div class="stat"><b id="sTreats">8</b><span>treats</span></div>
+        <div class="stat"><b id="sLarder">0</b><span>in the larder</span></div>
+        <div class="stat"><b id="sFetched">0</b><span>fetched today</span></div>
+        <div class="stat"><b id="sRaids">0/0</b><span>raids repelled</span></div>
       </div>
     </section>
 
@@ -127,11 +130,13 @@ dl.keys dd { margin: 0; color: var(--muted); }
       <h3>Controls</h3>
       <dl class="keys">
         <dt>WASD</dt><dd>walk</dd>
-        <dt>Click</dt><dd>toss a treat (or pet a critter beside you)</dd>
+        <dt>Click</dt><dd>toss a treat; click a critter beside you to hand-feed it (or pet it when you're out)</dd>
         <dt>Space</dt><dd>whistle</dd>
         <dt>E</dt><dd>shoo the ones near you</dd>
         <dt>Right-click</dt><dd>plant the flag; Q pulls it up</dd>
         <dt>N</dt><dd>end the day early</dd>
+        <dt>Fetch</dt><dd>reward critters that bring berries to the larder</dd>
+        <dt>Raid</dt><dd>whistle the swarm to the beetle; three or more drive it off</dd>
       </dl>
     </section>
   </aside>
@@ -143,23 +148,26 @@ dl.keys dd { margin: 0; color: var(--muted); }
 // ---------------------------------------------------------------- constants
 const W = 320, H = 200;
 const DAY_LEN = 80;                       // seconds of daylight
-const F = 8;                               // features a critter senses
-const K = 5;                               // behaviors it can choose
-const B = { COME: 0, FORAGE: 1, FLAG: 2, WANDER: 3, NEST: 4 };
-const BEH_NAME = ["coming to you", "foraging", "going to the flag", "wandering", "heading home"];
-const FEAT = ["bias", "whistle", "flag", "hunger", "food near", "you near", "you far", "shooed"];
+const F = 10;                              // features a critter senses
+const K = 6;                               // behaviors it can choose
+const B = { COME: 0, FORAGE: 1, FLAG: 2, WANDER: 3, NEST: 4, FETCH: 5 };
+const BEH_NAME = ["coming to you", "foraging", "going to the flag", "wandering", "heading home", "fetching for the larder"];
+const FEAT = ["bias", "whistle", "flag", "hunger", "food near", "you near", "you far", "shooed", "carrying", "raider near"];
 const NEST = { x: 34, y: 174 };
 const POP_CAP = 60;
 const TAU_ELIG = 2.5;                      // seconds a decision stays "credited" for a later reward
 
-// Instincts of the founding ancestor: forage when hungry or near food, drift home, avoid being shooed.
-// The whistle column starts empty: coming when called is the thing to teach.
+// Instincts of the founding ancestor: forage when hungry or near food, drift home, avoid being shooed,
+// keep carrying a berry home once one is picked up, shy away from raiders.
+// The whistle column starts empty (coming when called is taught), and fetching starts rare (also taught).
+//                bias  whis flag  hung  food  near  far   shoo  carry raider
 const ANCESTOR = [
-  /* COME   */ [0.0, 0, 0.0, 0.0, 0.0, 0.3, -0.3, -1.2],
-  /* FORAGE */ [-0.3, 0, 0.0, 1.6, 2.2, 0.0, 0.0, 0.0],
-  /* FLAG   */ [-1.0, 0, 0.6, 0.0, 0.0, 0.0, 0.0, 0.0],
-  /* WANDER */ [0.6, 0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.6],
-  /* NEST   */ [-0.3, 0, 0.0, -0.5, -0.8, 0.0, 0.0, 0.8],
+  /* COME   */ [0.0, 0, 0.0, 0.0, 0.0, 0.3, -0.3, -1.2, 0.0, 0.4],
+  /* FORAGE */ [-0.3, 0, 0.0, 1.6, 2.2, 0.0, 0.0, 0.0, -1.0, -0.5],
+  /* FLAG   */ [-1.0, 0, 0.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+  /* WANDER */ [0.6, 0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.6, 0.0, 0.6],
+  /* NEST   */ [-0.3, 0, 0.0, -0.5, -0.8, 0.0, 0.0, 0.8, 0.0, 0.3],
+  /* FETCH  */ [-1.4, 0, 0.0, -0.6, 0.0, 0.0, 0.0, 0.0, 2.2, -0.5],
 ];
 
 const SYL = ["pip", "mo", "bun", "tiv", "lo", "kai", "fen", "nib", "zu", "rae", "tok", "mil", "wen", "bo", "sy", "quo", "dee", "pa", "ri", "oon"];
@@ -192,6 +200,11 @@ function childGenome(g) {
     life: clamp(g.life + (Math.random() < 0.2 ? (Math.random() < 0.5 ? -1 : 1) : 0), 3, 7),
   };
 }
+// How much a critter leans toward fetching, all else equal.
+function fetchBond(Wm) {
+  let avg = 0; for (let k = 0; k < K; k++) avg += Wm[k * F];
+  return Wm[B.FETCH * F] - avg / K;
+}
 // How strongly whistle pulls toward "come" vs. other behaviors.
 function callBond(Wm) {
   let avg = 0; for (let k = 0; k < K; k++) avg += Wm[k * F + 1];
@@ -204,6 +217,7 @@ const S = {
   player: { x: 160, y: 110, face: 1, step: 0, moving: false },
   critters: [], foods: [], bushes: [], flag: null, rings: [], puffs: [],
   whistleT: -99, whistleEvents: [], treats: 8, treatRegen: 0,
+  larder: 0, raiders: [], raidTimes: [],
   dayStats: null, log: [], hover: null, focus: null, nextId: 1,
   keys: new Set(), mouse: { x: 0, y: 0, in: false },
 };
@@ -214,11 +228,16 @@ function newCritter(g, x, y, gen, parent) {
     x, y, vx: 0, vy: 0, face: 1, bob: rand(0, 6), beh: B.WANDER, decT: rand(0, 0.5), wanderA: rand(0, 6.28),
     energy: 60, age: 0, gen, parent, faint: 0, shooedT: -99, emote: null, emoteT: 0, ringA: rand(0, 6.28),
     treats: 0, pets: 0, blink: rand(1, 4), lastBeh: B.WANDER, alive: true,
+    carrying: false, delivered: 0, heardT: -99, glowT: 0, nipT: 0,
   };
 }
 
 function resetDayStats() {
-  S.dayStats = { born: 0, died: 0, starved: 0, old: 0, whistles: 0, rateSum: 0, rateN: 0, treatsGiven: 0 };
+  S.dayStats = { born: 0, died: 0, starved: 0, old: 0, whistles: 0, rateSum: 0, rateN: 0, treatsGiven: 0,
+                 delivered: 0, raids: 0, repelled: 0, stolen: 0 };
+  // raiders arrive more often as the colony ages
+  const n = Math.min(4, 1 + Math.floor((S.day - 1) / 2));
+  S.raidTimes = Array.from({ length: n }, (_, i) => 18 + (i + 0.5) * (48 / n) + rand(-5, 5)).sort((a, b) => a - b);
 }
 
 function setup() {
@@ -252,6 +271,9 @@ const sfx = {
   pet: () => tone(700, 1100, 0.15, "sine", 0.06),
   shoo: () => tone(200, 90, 0.2, "sawtooth", 0.05),
   pop: () => tone(900, 1400, 0.1, "sine", 0.05),
+  drop: () => tone(500, 750, 0.09, "triangle", 0.05),
+  raid: () => { tone(160, 120, 0.25, "square", 0.04); setTimeout(() => tone(150, 110, 0.25, "square", 0.04), 280); },
+  win: () => { tone(660, 990, 0.12); setTimeout(() => tone(990, 1320, 0.16), 120); },
 };
 
 // ---------------------------------------------------------------- learning
@@ -267,6 +289,8 @@ function features(c) {
   f[5] = dp < 45 ? 1 : 0;
   f[6] = dp > 130 ? 1 : 0;
   f[7] = Math.exp(-(S.t - c.shooedT) / 2.0);
+  f[8] = c.carrying ? 1 : 0;
+  f[9] = S.raiders.some(r => r.state !== "flee" && dist(c, r) < 80) ? 1 : 0;
   return f;
 }
 function dusk() { return clamp((S.dayT - DAY_LEN * 0.82) / (DAY_LEN * 0.18), 0, 1); }
@@ -292,7 +316,7 @@ function decide(c) {
   // Track responses to the most recent whistle.
   const ev = S.whistleEvents[S.whistleEvents.length - 1];
   if (ev && !ev.done && a === B.COME && c.lastBeh !== B.COME && S.t - ev.t < 1.5 && ev.heard.has(c.id)) {
-    ev.came.add(c.id); emote(c, "!");
+    ev.came.add(c.id); emote(c, "!"); c.glowT = 0.8;
   }
 }
 
@@ -318,7 +342,7 @@ function whistle() {
   S.whistleT = S.t;
   S.rings.push({ x: S.player.x, y: S.player.y - 12, r: 4, max: 70, color: "#7fd6c9", life: 0.7 });
   const heard = new Set();
-  for (const c of alive()) if (dist(c, S.player) < 230 && c.beh !== B.COME) heard.add(c.id);
+  for (const c of alive()) if (dist(c, S.player) < 230) { c.heardT = S.t; if (c.beh !== B.COME) heard.add(c.id); }
   S.whistleEvents.push({ t: S.t, heard, came: new Set(), done: false });
   S.dayStats.whistles++;
   for (const c of alive()) if (heard.has(c.id)) decide(c);   // hearing it prompts a fresh choice
@@ -344,9 +368,14 @@ function tapAt(x, y) {
   // Pet a critter right beside the keeper; otherwise toss a treat toward the point.
   const c = critterAt(x, y);
   if (c && dist(c, S.player) < 30) {
-    reward(c, 0.6); c.pets++; emote(c, "heart"); sfx.pet(); S.focus = c; return;
+    S.focus = c;
+    if (S.treats > 0) {   // hand-feed: the most precise reward there is
+      S.treats--; S.dayStats.treatsGiven++; c.treats++; c.energy = Math.min(100, c.energy + 22);
+      reward(c, 1.2); emote(c, "heart"); sfx.munch(); return;
+    }
+    reward(c, 0.6); c.pets++; emote(c, "heart"); sfx.pet(); return;   // out of treats: a pet still says "good"
   }
-  if (S.treats < 1) { S.puffs.push({ x: S.player.x, y: S.player.y - 26, text: "out of treats", life: 1 }); return; }
+  if (S.treats < 1) { S.puffs.push({ x: S.player.x - 24, y: S.player.y - 26, text: "out of treats", life: 1 }); return; }
   const dx = x - S.player.x, dy = y - S.player.y, d = Math.hypot(dx, dy), max = 120;
   const tx = d > max ? S.player.x + dx / d * max : x, ty = d > max ? S.player.y + dy / d * max : y;
   S.foods.push({ kind: "treat", sx: S.player.x, sy: S.player.y - 10, x: tx, y: ty, air: 0.45, airMax: 0.45, t: S.t });
@@ -391,6 +420,9 @@ function update(dt) {
   }
 
   const cs = alive();
+  if (S.raidTimes.length && S.dayT >= S.raidTimes[0]) { S.raidTimes.shift(); spawnRaider(); }
+  for (const r of S.raiders) updateRaider(r, dt, cs);
+  S.raiders = S.raiders.filter(r => !r.gone);
   for (const c of cs) updateCritter(c, dt, cs);
   S.critters = S.critters.filter(c => c.alive || c.ghost > 0);
   for (const c of S.critters) if (!c.alive) c.ghost -= dt;
@@ -410,6 +442,7 @@ function updateCritter(c, dt, cs) {
   c.decT -= dt; if (c.decT <= 0) decide(c);
   c.blink -= dt; if (c.blink < -0.12) c.blink = rand(2, 5);
   if (c.emoteT > 0) c.emoteT -= dt;
+  if (c.glowT > 0) c.glowT -= dt;
 
   // where it wants to go
   let tx = c.x, ty = c.y, sp = c.g.speed;
@@ -428,6 +461,13 @@ function updateCritter(c, dt, cs) {
     case B.FLAG: if (S.flag) { tx = S.flag.x + Math.cos(c.ringA) * 10; ty = S.flag.y + 6 + Math.sin(c.ringA) * 5; c.ringA += dt * 0.6; } break;
     case B.WANDER: c.wanderA += gauss() * 0.5; tx = c.x + Math.cos(c.wanderA) * 20; ty = c.y + Math.sin(c.wanderA) * 20; sp *= 0.5; break;
     case B.NEST: tx = NEST.x + Math.cos(c.ringA) * 12; ty = NEST.y - 4 + Math.sin(c.ringA) * 5; break;
+    case B.FETCH: {
+      if (c.carrying) { tx = NEST.x + 12; ty = NEST.y - 2; break; }
+      let best = null, bd = 1e9;
+      for (const b of S.bushes) { if (b.berries <= 0) continue; const d = Math.hypot(b.x - c.x, b.y - c.y); if (d < bd) { bd = d; best = b; } }
+      if (best) { tx = best.x; ty = best.y + 6; } else { c.wanderA += gauss() * 0.4; tx = c.x + Math.cos(c.wanderA) * 20; ty = c.y + Math.sin(c.wanderA) * 20; sp *= 0.5; }
+      break;
+    }
   }
   if (c.faint > 0) sp *= 0.25;
   const dx = tx - c.x, dy = ty - c.y, d = Math.hypot(dx, dy);
@@ -455,10 +495,19 @@ function updateCritter(c, dt, cs) {
   }
   S.foods = S.foods.filter(fd => !fd.eaten);
   for (const b of S.bushes) {
-    if (b.berries > 0 && Math.hypot(b.x - c.x, b.y + 6 - c.y) < 9 && c.energy < 90 && Math.random() < dt * 2) {
+    if (b.berries <= 0 || Math.hypot(b.x - c.x, b.y + 6 - c.y) >= 9) continue;
+    if (c.beh === B.FETCH && !c.carrying) { b.berries--; c.carrying = true; c.decT = Math.min(c.decT, 0.2); }
+    else if (!c.carrying && c.beh !== B.FETCH && c.energy < 90 && Math.random() < dt * 2) {
       b.berries--; c.energy = Math.min(100, c.energy + 14); reward(c, 0.3); sfx.munch();
     }
   }
+  // deliver to the larder
+  if (c.carrying && Math.hypot(c.x - (NEST.x + 12), c.y - (NEST.y - 2)) < 8) {
+    c.carrying = false; c.delivered++; S.larder++; S.dayStats.delivered++; sfx.drop();
+    S.puffs.push({ x: NEST.x + 18, y: NEST.y - 14, text: "+1", life: 0.8 });
+  }
+  // a hungry carrier eats its own berry
+  if (c.carrying && c.energy < 20) { c.carrying = false; c.energy += 14; reward(c, 0.3); }
 
   // metabolism
   const atHome = Math.hypot(c.x - NEST.x, c.y - NEST.y) < 22;
@@ -468,6 +517,47 @@ function updateCritter(c, dt, cs) {
     c.energy = 0; c.faint += dt;
     if (c.faint > 6) { c.alive = false; c.ghost = 1.6; c.cause = "starved"; S.dayStats.died++; S.dayStats.starved++; }
   } else c.faint = 0;
+}
+
+// ---------------------------------------------------------------- raiders
+function spawnRaider() {
+  const fromTop = Math.random() < 0.5;
+  const r = { x: fromTop ? rand(120, W - 20) : W + 8, y: fromTop ? -6 : rand(40, H - 40), hp: 100, state: "approach",
+              stealT: 0, atNestT: 0, carried: 0, face: -1, step: 0, mob: 0 };
+  S.raiders.push(r); S.dayStats.raids++; sfx.raid();
+  S.puffs.push({ x: W / 2 - 30, y: 30, text: "A raider is coming for the larder!", life: 2.2 });
+}
+function updateRaider(r, dt, cs) {
+  let tx = r.x, ty = r.y, sp = 20;
+  if (r.state === "approach") { tx = NEST.x + 14; ty = NEST.y - 2; }
+  else { tx = r.x < W / 2 ? -20 : W + 20; ty = r.y; sp = r.state === "flee" ? 48 : 26; }
+  const dx = tx - r.x, dy = ty - r.y, d = Math.hypot(dx, dy);
+  const slow = r.mob >= 3 ? 0.35 : 1;
+  if (d > 2) { r.x += dx / d * sp * slow * dt; r.y += dy / d * sp * slow * dt; r.face = dx > 0 ? 1 : -1; r.step += dt * 10; }
+  if (r.x < -16 || r.x > W + 16 || r.y < -16) { r.gone = true; return; }
+  if (r.state === "approach" && d < 6) {
+    r.atNestT += dt; r.stealT += dt;
+    if (r.stealT > 1.6 && S.larder > 0) { r.stealT = 0; S.larder--; r.carried++; S.dayStats.stolen++; }
+    if (r.carried >= 3 || (S.larder === 0 && r.atNestT > 3)) r.state = "leave";
+  }
+  if (r.state === "flee") return;
+  // the swarm drives it off; a lone critter just gets nipped
+  let mob = 0;
+  for (const c of cs) if (c.age > 0 && Math.hypot(c.x - r.x, c.y - r.y) < 16) mob++;
+  r.mob = mob;
+  if (mob >= 3) r.hp -= dt * 14 * (mob - 2);
+  if (Math.hypot(S.player.x - r.x, S.player.y - r.y) < 18) r.hp -= dt * 5;
+  if (mob > 0 && mob < 3) for (const c of cs) {
+    if (Math.hypot(c.x - r.x, c.y - r.y) < 11 && S.t - c.nipT > 1.5) {
+      c.nipT = S.t; c.energy = Math.max(0, c.energy - 6); c.shooedT = S.t; emote(c, "x");
+    }
+  }
+  if (r.hp <= 0) {
+    r.state = "flee"; S.larder += r.carried; r.carried = 0; S.dayStats.repelled++;
+    S.treats = Math.min(8, S.treats + 3); sfx.win();
+    S.puffs.push({ x: r.x - 34, y: r.y - 14, text: "Driven off! +3 treats", life: 1.8 });
+    for (const c of cs) if (Math.hypot(c.x - r.x, c.y - r.y) < 18) emote(c, "!");
+  }
 }
 
 // ---------------------------------------------------------------- night
@@ -480,6 +570,11 @@ function endDay() {
   const learned = cs.length ? cs.reduce((s, c) => s + callBond(c.W), 0) / cs.length : 0;
   const babies = [];
   let starvedNight = 0, oldAge = 0;
+  // the larder feeds everyone before the night's breeding
+  const feast = cs.length ? Math.min(40, (S.larder * 9) / cs.length) : 0;
+  const larderUsed = S.larder;
+  for (const c of cs) c.energy = Math.min(100, c.energy + feast);
+  S.larder = 0;
   for (const c of cs) {
     c.energy -= 12;
     let n = c.energy >= 85 ? 2 : c.energy >= 55 ? 1 : 0;
@@ -499,7 +594,8 @@ function endDay() {
   const now = alive();
   const inborn = now.length ? now.reduce((s, c) => s + callBond(c.g.W0), 0) / now.length : 0;
   const rate = S.dayStats.rateN ? S.dayStats.rateSum / S.dayStats.rateN : null;
-  S.log.push({ day: S.day, pop: now.length, learned, inborn, rate, born: babies.length, died: S.dayStats.died });
+  S.log.push({ day: S.day, pop: now.length, learned, inborn, rate, born: babies.length, died: S.dayStats.died,
+               delivered: S.dayStats.delivered, repelled: S.dayStats.repelled, raids: S.dayStats.raids });
 
   // summary card
   const star = babies.slice().sort((a, b) => callBond(b.g.W0) - callBond(a.g.W0))[0];
@@ -507,6 +603,8 @@ function endDay() {
   $("nightList").innerHTML = [
     `<li><b>${babies.length}</b> born in the burrow</li>`,
     `<li><b>${oldAge}</b> passed on from old age, <b>${S.dayStats.starved}</b> starved today</li>`,
+    `<li><b>${larderUsed}</b> berries in the larder, a feast of <b>+${Math.round(feast)}</b> energy each</li>`,
+    S.dayStats.raids ? `<li><b>${S.dayStats.repelled}</b> of ${S.dayStats.raids} raiders driven off, <b>${S.dayStats.stolen}</b> berries stolen</li>` : "",
     `<li><b>${S.dayStats.treatsGiven}</b> treats given, <b>${S.dayStats.whistles}</b> whistles</li>`,
     rate !== null ? `<li>On average <b>${Math.round(rate * 100)}%</b> came when you whistled</li>` : "",
   ].join("");
@@ -522,9 +620,9 @@ function endDay() {
 function startDay() {
   if (!S.night) return;
   S.night = false; S.day++; S.dayT = 0; resetDayStats(); S.whistleEvents = [];
-  S.foods = []; S.flag = null;
+  S.foods = []; S.flag = null; S.raiders = [];
   for (const b of S.bushes) b.berries = 3;
-  for (const c of alive()) { c.E.fill(0); c.beh = B.WANDER; }
+  for (const c of alive()) { c.E.fill(0); c.beh = B.WANDER; c.carrying = false; }
   S.critters = alive();
   $("night").hidden = true;
   $("game").focus();
@@ -554,6 +652,28 @@ function drawBurrow() {
   const x = NEST.x, y = NEST.y;
   px(x - 13, y - 6, 26, 8, "#6b4f2e"); px(x - 11, y - 8, 22, 3, "#7d5e37"); px(x - 8, y - 10, 16, 3, "#8a6a40");
   px(x - 5, y - 6, 10, 6, "#1d140b"); px(x - 4, y - 7, 8, 2, "#2a1e10");
+  // the larder: a little pile of berries beside the burrow
+  const lx = x + 12, ly = y - 1;
+  px(lx - 5, ly + 1, 11, 2, "#5a4126");
+  for (let i = 0; i < Math.min(S.larder, 15); i++) {
+    const row = i < 5 ? 0 : i < 9 ? 1 : i < 12 ? 2 : 3, col = i < 5 ? i : i < 9 ? i - 5 : i < 12 ? i - 9 : i - 12;
+    const bx = lx - 4 + col * 2 + row, by = ly - row * 2;
+    px(bx, by, 2, 2, "#d7354a"); px(bx, by, 1, 1, "#ff8a94");
+  }
+  if (S.larder > 15) { ctx.font = "7px 'Pixelify Sans', monospace"; ctx.fillStyle = "#eeedd9"; ctx.fillText(String(S.larder), lx + 6, ly - 4); }
+}
+function drawRaider(r) {
+  const x = Math.round(r.x), y = Math.round(r.y), f = r.face;
+  const leg = Math.round(Math.sin(r.step)) ;
+  px(x - 7, y + 1, 14, 2, "rgba(0,0,0,0.3)");
+  for (const lx of [-5, -1, 3]) { px(x + lx, y - 1 + (lx === -1 ? leg : -leg), 1, 2, "#1a1424"); }
+  px(x - 6, y - 7, 12, 6, "#3d2a5c"); px(x - 5, y - 8, 10, 1, "#4e3775"); px(x - 6, y - 4, 12, 1, "#2a1d40");
+  px(x - 4, y - 7, 2, 1, "#8e7bbd");                                   // shell shine
+  px(x + (f > 0 ? 5 : -8), y - 6, 3, 4, "#2a1d40");                    // head
+  px(x + (f > 0 ? 7 : -8), y - 5, 1, 1, "#f2c14e");                    // eye
+  px(x + (f > 0 ? 8 : -10), y - 9, 1, 3, "#2a1d40"); px(x + (f > 0 ? 9 : -11), y - 10, 1, 1, "#2a1d40");
+  for (let i = 0; i < r.carried; i++) px(x - 3 + i * 3, y - 10, 2, 2, "#d7354a");
+  if (r.hp < 100 && r.state !== "flee") { px(x - 6, y - 13, 12, 2, "rgba(0,0,0,0.5)"); px(x - 6, y - 13, Math.max(0, Math.round(12 * r.hp / 100)), 2, "#e8836b"); }
 }
 function drawBush(b) {
   const x = b.x, y = b.y;
@@ -585,11 +705,14 @@ function drawCritter(c) {
   px(x + 1, y, w - 2, h, body); px(x, y + 1, w, h - 2, body);              // rounded body
   px(x + 1, y + h - 1, w - 2, 1, shade);
   px(x + (c.face > 0 ? 1 : w - 4), y + h - 3, 3, 2, belly);
-  // ears
+  // ears (they perk up for a moment when it hears your whistle)
   const ex = c.face > 0 ? x + w - 4 : x + 1;
-  if (c.g.ears === 0) { px(ex, y - 1, 1, 1, shade); px(ex + 2, y - 1, 1, 1, shade); }
-  else if (c.g.ears === 1) { px(ex, y - 2, 1, 2, shade); px(ex + 2, y - 2, 1, 2, shade); }
-  else { px(ex - 1, y - 1, 2, 1, shade); px(ex + 2, y - 1, 2, 1, shade); }
+  const perk = !ghost && S.t - c.heardT < 1.0 ? 1 : 0;
+  const ec = perk ? belly : shade;
+  if (c.g.ears === 0) { px(ex, y - 1 - perk, 1, 1 + perk, ec); px(ex + 2, y - 1 - perk, 1, 1 + perk, ec); }
+  else if (c.g.ears === 1) { px(ex, y - 2 - perk, 1, 2 + perk, ec); px(ex + 2, y - 2 - perk, 1, 2 + perk, ec); }
+  else { px(ex - 1, y - 1 - perk, 2, 1 + perk, ec); px(ex + 2, y - 1 - perk, 2, 1 + perk, ec); }
+  if (c.carrying) { px(x + (c.face > 0 ? 1 : w - 4), y - 2, 3, 3, "#d7354a"); px(x + (c.face > 0 ? 1 : w - 4), y - 2, 1, 1, "#ff8a94"); }
   // eye and nose
   const eyeX = c.face > 0 ? x + w - 3 : x + 2;
   if (c.faint > 0 || ghost) px(eyeX, y + 2, 1, 1, "#3a2f2a");
@@ -597,6 +720,7 @@ function drawCritter(c) {
   px(c.face > 0 ? x + w - 1 : x, y + 3, 1, 1, "#e58ea2");
   if (!baby && !ghost) { const fx = Math.sin(c.bob) > 0 ? 1 : 0; px(x + 1 + fx, y + h, 1, 1, shade); px(x + w - 3 + fx, y + h, 1, 1, shade); }
   ctx.globalAlpha = 1;
+  if (c.glowT > 0) { ctx.globalAlpha = Math.min(1, c.glowT / 0.8); ctx.strokeStyle = "#7fd6c9"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(c.x, c.y - h / 2, w / 2 + 3, h / 2 + 3, 0, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1; }
   if (c === S.hover || c === S.focus) { ctx.strokeStyle = c === S.hover ? "#eeedd9" : "rgba(238,237,217,0.5)"; ctx.lineWidth = 1; ctx.strokeRect(x - 2.5, y - 3.5, w + 5, h + 6); }
   if (c.emoteT > 0 && c.emote) drawEmote(c.x, y - 4, c.emote);
   if (S.night === false && dusk() > 0.6 && c.beh === B.NEST && Math.hypot(c.x - NEST.x, c.y - NEST.y) < 20 && Math.sin(S.t * 2 + c.id) > 0.6) drawEmote(c.x, y - 4, "z");
@@ -637,11 +761,12 @@ function draw() {
   for (const b of S.bushes) sprites.push({ y: b.y + 4, d: () => drawBush(b) });
   for (const fd of S.foods) sprites.push({ y: fd.y, d: () => drawTreat(fd) });
   for (const c of S.critters) sprites.push({ y: c.y, d: () => drawCritter(c) });
+  for (const r of S.raiders) sprites.push({ y: r.y, d: () => drawRaider(r) });
   sprites.push({ y: S.player.y, d: () => drawKeeper(S.player) });
   sprites.sort((a, b) => a.y - b.y).forEach(s => s.d());
   for (const r of S.rings) { ctx.globalAlpha = Math.max(0, r.life / 0.7); ctx.strokeStyle = r.color; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(r.x, r.y, r.r, r.r * 0.6, 0, 0, Math.PI * 2); ctx.stroke(); }
   ctx.globalAlpha = 1;
-  for (const p of S.puffs) { ctx.font = "8px 'Pixelify Sans', monospace"; ctx.fillStyle = "#eeedd9"; ctx.fillText(p.text, p.x - 24, p.y); }
+  for (const p of S.puffs) { ctx.font = "8px 'Pixelify Sans', monospace"; ctx.fillStyle = "#eeedd9"; ctx.fillText(p.text, p.x, p.y); }
   // evening light
   const dk = dusk();
   if (dk > 0) { ctx.fillStyle = `rgba(40, 30, 80, ${dk * 0.38})`; ctx.fillRect(0, 0, W, H); }
@@ -659,6 +784,8 @@ function updatePanel(force) {
   if (!force && S.t - lastPanel < 0.25) return;
   lastPanel = S.t;
   $("sDay").textContent = S.day; $("sPop").textContent = alive().length; $("sTreats").textContent = S.treats;
+  $("sLarder").textContent = S.larder; $("sFetched").textContent = S.dayStats.delivered;
+  $("sRaids").textContent = `${S.dayStats.repelled}/${S.dayStats.raids}`;
   const c = S.hover || (S.focus && S.focus.alive ? S.focus : null);
   if (!c) { $("who").innerHTML = '<p class="note">Point at a critter to meet it.</p>'; return; }
   const energyPct = Math.round(c.energy);
@@ -668,7 +795,9 @@ function updatePanel(force) {
     <div class="bar"><span>Energy</span><div class="track"><div class="fill" style="width:${energyPct}%;background:var(--treat)"></div></div><em>${energyPct}</em></div>
     ${bar("Call: learned", callBond(c.W), 4, "var(--call)")}
     ${bar("Call: inborn", callBond(c.g.W0), 4, "var(--born)")}
-    <div class="meta">Learns ${c.g.eta > 1.1 ? "quickly" : c.g.eta > 0.7 ? "steadily" : "slowly"} · ${c.g.speed > 56 ? "quick on its feet" : c.g.speed < 40 ? "an ambler" : "average pace"} · ${c.g.appetite > 1.1 ? "big appetite" : c.g.appetite < 0.9 ? "light eater" : "normal appetite"} · ${c.treats} treats, ${c.pets} pets</div>`;
+    ${bar("Fetch: learned", fetchBond(c.W), 4, "var(--call)")}
+    ${bar("Fetch: inborn", fetchBond(c.g.W0), 4, "var(--born)")}
+    <div class="meta">Learns ${c.g.eta > 1.1 ? "quickly" : c.g.eta > 0.7 ? "steadily" : "slowly"} · ${c.g.speed > 56 ? "quick on its feet" : c.g.speed < 40 ? "an ambler" : "average pace"} · ${c.g.appetite > 1.1 ? "big appetite" : c.g.appetite < 0.9 ? "light eater" : "normal appetite"} · ${c.treats} treats, ${c.pets} pets, ${c.delivered} berries fetched${c.carrying ? " · carrying one now" : ""}</div>`;
 }
 
 function drawChart() {
@@ -744,7 +873,7 @@ for (const [id, mode] of [["mTreat", "treat"], ["mWalk", "walk"], ["mFlag", "fla
 
 // ---------------------------------------------------------------- loop
 setup();
-window.swarmkeeper = { S, whistle, tapAt, update, endDay, startDay, callBond, B };   // for tinkering from the console
+window.swarmkeeper = { S, whistle, tapAt, update, endDay, startDay, callBond, fetchBond, spawnRaider, B };   // for tinkering from the console
 let last = performance.now();
 function frame(now) {
   let dt = Math.min(0.05, (now - last) / 1000); last = now;
