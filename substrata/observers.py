@@ -117,7 +117,7 @@ CHART_GROUPS = {  # each group shares an axis, so keep similar scales together
     "cell_energy": ["energy_mean"],
     "brains": ["active_params_frac", "expressed_hidden_frac"],
     "bandwidth": ["msg_bandwidth"],
-    "learning": ["weight_drift"],
+    "learning": ["weight_drift", "reward_gate_mean"],
     "generations": ["generation_mean"],
     "habitat": ["habitat_match"],
     "bonds": ["bonds_per_cell", "bonded_frac"],

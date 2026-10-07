@@ -145,6 +145,22 @@ def test_groups_found():
     assert (lab[a] <= torch.arange(w.N)[a]).all()
 
 
+def test_reward_gating_and_hidden_inflow_run_and_conserve():
+    w = small(**{"layers.reward_gating": "true", "substrate.sense_inflow": "false", "layers.bonds": "true",
+                 "substrate.field": "patches", "substrate.contrast": 0.8, "substrate.season": "wave",
+                 "substrate.season_period": 50})
+    w0 = w.W1.clone()
+    for _ in range(60):
+        before = w.total_energy()
+        w.reset_stats()
+        w.step()
+        st = {k: float(v) for k, v in w.st.items()}
+        expected = before + st["inflow_in"] - st["cost_out"] - st["transit_loss"] - st["overflow"] - st["death_loss"]
+        assert abs(w.total_energy() - expected) < 1e-2 * max(1.0, abs(before))
+    assert float(w.reward.abs().sum()) > 0
+    assert not torch.allclose(w.W1, w0)
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

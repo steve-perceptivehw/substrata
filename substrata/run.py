@@ -24,7 +24,7 @@ from .observers import CSVObserver, RerunObserver, render
 from .world import World
 
 SAVE_KEYS = ["alive", "energy", "age", "lifespan", "gen", "state", "msg", "group", "give_out",
-             "W1", "W2", "gate", "active", "bond"]   # M1, M2 are rebuilt from the genome
+             "W1", "W2", "gate", "active", "bond", "reward", "baseline"]   # M1, M2 are rebuilt from the genome
 
 
 def save_checkpoint(w: World, path: str):
@@ -42,7 +42,8 @@ def load_checkpoint(path: str, device) -> World:
     ck = torch.load(path, map_location=device, weights_only=False)
     cfg = C.from_dict(ck["config"])
     w = World(cfg, device)
-    w.genome = {k: v.to(device) for k, v in ck["genome"].items()}
+    saved = {k: v.to(device) for k, v in ck["genome"].items()}
+    w.genome = {**w.genome, **saved}   # genes added since the checkpoint was written keep fresh values
     for k, v in ck["tensors"].items():
         setattr(w, k, v.to(device))
     w.M1 = (w.genome["M1l"] > 0).float()

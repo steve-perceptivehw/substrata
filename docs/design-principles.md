@@ -1,4 +1,4 @@
-# Substrata: Design Principles (outline v0.6)
+# Substrata: Design Principles (outline v0.7)
 
 *Origin: the original Stratum concept, a cellular automaton whose cells learn and evolve their own rules.*
 
@@ -109,6 +109,8 @@
 | Newborn bonded to parent | on | `layers.bond_at_birth` | off: do groups still form, and are they still kin? |
 | Energy evens out within a group | share rate 0.5 | `layers.bond_share` | 0 (bonds without sharing) vs. faster sharing |
 | Bonds cost upkeep | 0.005 per bond per tick | `energy.bond_cost` | free bonds |
+| Cells sense local inflow directly | on | `substrate.sense_inflow` | off: cells feel conditions only through their own energy |
+| Learning is plain correlation (Hebbian) | on | `layers.reward_gating` | on: a gene (R) mixes in reward, the cell's energy change against its recent average |
 | Expression gate is binary | hard on/off, every 10 ticks | `layers.express_every` | soft gate; faster updates |
 
 ## 12. Open questions

@@ -23,6 +23,7 @@ class SubstrateCfg:
     patch_scale: float = 12.0       # typical patch size in sites ("patches")
     field_seed: int = 1             # which random patch layout
     inflow_field_file: str = ""     # .npy (grid x grid) for field = "file"
+    sense_inflow: bool = True       # False hides the inflow field: cells feel it only through their own energy
     season: str = "none"            # "none", "global", "wave", "drift"
     season_period: int = 2000       # ticks per season cycle ("global", "wave")
     season_amp: float = 0.5         # 0 to 1, size of the seasonal swing
@@ -65,6 +66,8 @@ class LayersCfg:
     plasticity: bool = True         # Layer 1 learning within a lifetime
     plasticity_every: int = 1
     eta_scale: float = 0.01         # bound on the genome's learning rate
+    reward_gating: bool = False     # let a gene mix in a reward signal (the cell's own energy change) to the learning rule
+    reward_scale: float = 0.1       # energy change (vs. the cell's recent average) that counts as a strong reward
     expression: str = "context"     # "context" or "fixed"
     express_every: int = 10
     heritable_marks: bool = False   # reserved

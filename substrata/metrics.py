@@ -59,6 +59,7 @@ def compute(w) -> dict:
         bonds_per_cell=float(w.bond[a].float().sum(1).mean()),
         bonded_frac=float((w.bond[a].any(1)).float().mean()),
         bond_flow_per_cell=st["bond_flow"] / t / n,
+        reward_gate_mean=float(torch.sigmoid(g["R"][a]).mean()),   # 0 = plain correlation learning, 1 = reward-driven
     )
     if w.cfg.layers.bonds:
         if w.labels is None or w.tick % w.cfg.observe.group_every == 0:

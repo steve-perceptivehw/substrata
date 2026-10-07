@@ -49,7 +49,7 @@ class World:
         self.mutable = gn.mutable_genes(cfg.layers.layer3)
         m = cfg.mutation
         self.sigma = {"W1g": m.sigma_w, "W2g": m.sigma_w, "M1l": m.sigma_mask, "M2l": m.sigma_mask,
-                      "P": m.sigma_learn, "E": m.sigma_learn, "Eb": m.sigma_learn}
+                      "P": m.sigma_learn, "E": m.sigma_learn, "Eb": m.sigma_learn, "R": m.sigma_learn}
 
         self.rng = torch.Generator(device=device).manual_seed(cfg.seed)
         self.nbr = grid.neighbor_index(G, device)
@@ -84,6 +84,8 @@ class World:
         self.msg = self._zeros(N, self.M)
         self.group = self._zeros(N, self.GC)          # Layer 2 downward channel (zeros until bonds exist)
         self.give_out = self._zeros(N)                 # last tick's total transfer out (for viewing)
+        self.reward = self._zeros(N)                   # energy change vs. the cell's recent average (reward gating)
+        self.baseline = self._zeros(N)
         self.bond = torch.zeros(N, K, dtype=torch.bool, device=self.dev)   # bond[p, k]: p is bonded to p + DIRS[k]
         self.labels = None                             # bonded-group label per site (refreshed every group_every ticks)
         self._opp = torch.tensor(grid.OPP, device=self.dev)
@@ -116,7 +118,7 @@ class World:
         E = self.cfg.energy
         occ = grid.gather(self.alive.float().unsqueeze(1), self.G).squeeze(-1)[idx].mean(1, keepdim=True)
         age = (self.age[idx].float() / self.lifespan[idx].float()).unsqueeze(1)
-        return torch.cat([(self.energy[idx] / E.max).unsqueeze(1), self.inflow[idx].unsqueeze(1),
+        return torch.cat([(self.energy[idx] / E.max).unsqueeze(1), self._sensed_inflow()[idx].unsqueeze(1),
                           occ, age, self.group[idx]], dim=1)
 
     def _express(self, idx):
@@ -133,11 +135,18 @@ class World:
         a2 = (self.M2[idx] * gate.unsqueeze(2)).sum((1, 2))
         self.active[idx] = a1 + a2
 
+    def _sensed_inflow(self):
+        return self.inflow if self.cfg.substrate.sense_inflow else torch.zeros_like(self.inflow)
+
     # ------------------------------------------------------------ plasticity
-    def _plastic(self, W, mask, pre, post, P, alive_f):
+    def _plastic(self, W, mask, pre, post, P, alive_f, R=None):
         s = self.cfg.layers.eta_scale
         P = torch.tanh(P)
-        eta = (s * P[:, 0] * alive_f).view(-1, 1, 1)
+        gain = alive_f
+        if R is not None:   # mix plain correlation (gate 0) with reward-driven learning (gate 1); the gene decides
+            gate = torch.sigmoid(R)
+            gain = alive_f * ((1 - gate) + gate * self.reward)
+        eta = (s * P[:, 0] * gain).view(-1, 1, 1)
         A, B, C, D = (P[:, i].view(-1, 1, 1) for i in range(1, 5))
         pre_, post_ = pre.unsqueeze(2), post.unsqueeze(1)
         W.add_(eta * (A * pre_ * post_ + B * pre_ + C * post_ + D) * mask)
@@ -160,7 +169,7 @@ class World:
         occ = grid.gather(alive_f.unsqueeze(1), G).squeeze(-1)                    # [N, K]
         nmsg = grid.gather(self.msg, G).reshape(N, K * M)
         x = torch.cat([self.state, nmsg, occ, (self.energy / En.max).unsqueeze(1),
-                       self.inflow.unsqueeze(1), self.group, torch.ones(N, 1, device=self.dev)], dim=1)
+                       self._sensed_inflow().unsqueeze(1), self.group, torch.ones(N, 1, device=self.dev)], dim=1)
 
         # 2. think
         m1 = self.M1 * self.gate.unsqueeze(1)
@@ -177,8 +186,10 @@ class World:
 
         # 3. learn
         if cfg.layers.plasticity and self.tick % cfg.layers.plasticity_every == 0:
-            self._plastic(self.W1, m1, x, h, self.genome["P"][:, 0], alive_f)
-            self._plastic(self.W2, m2, h, torch.tanh(out), self.genome["P"][:, 1], alive_f)
+            rg = cfg.layers.reward_gating
+            R = self.genome["R"]
+            self._plastic(self.W1, m1, x, h, self.genome["P"][:, 0], alive_f, R[:, 0] if rg else None)
+            self._plastic(self.W2, m2, h, torch.tanh(out), self.genome["P"][:, 1], alive_f, R[:, 1] if rg else None)
 
         self.state = new_state * alive_f.unsqueeze(1)
         self.msg = new_msg * alive_f.unsqueeze(1)
@@ -215,6 +226,11 @@ class World:
             self.st["bond_flow"] = self.st["bond_flow"] + delta.clamp(min=0).sum().detach()
         overflow = (e - En.max).clamp(min=0)
         e = e - overflow
+        if cfg.layers.reward_gating:
+            # reward = this tick's energy change against the cell's own recent average (before any birth costs)
+            dE = (e - self.energy) * alive_f
+            self.reward = torch.tanh((dE - self.baseline) / cfg.layers.reward_scale) * alive_f
+            self.baseline = (0.9 * self.baseline + 0.1 * dE) * alive_f
         self.give_out = give_tot
         self.st["overflow"] = self.st["overflow"] + (overflow.sum()).detach()
         self.st["transit_loss"] = self.st["transit_loss"] + (give_tot.sum() - received.sum()).detach()
@@ -288,6 +304,8 @@ class World:
         self.gen[q] = self.gen[p] + 1
         self.state[q] = 0
         self.msg[q] = 0
+        self.reward[q] = 0
+        self.baseline[q] = 0
         self._express(q)
 
     # ---------------------------------------------------------------- groups

@@ -10,13 +10,15 @@ Genes:
   M1l, M2l   mask logits; a weight exists only where its logit > 0 (structure)
   P          plasticity rule per layer: raw (eta, A, B, C, D)
   E, Eb      expression: which hidden units are switched on, as a function of context
+  R          reward gating per layer: how much the learning rule is driven by reward rather than
+             plain correlation (used only when layers.reward_gating is on)
 """
 
 from __future__ import annotations
 
 import torch
 
-LEARNING_GENES = ("P", "E", "Eb")
+LEARNING_GENES = ("P", "E", "Eb", "R")
 STRUCTURE_GENES = ("W1g", "W2g", "M1l", "M2l")
 ALL_GENES = STRUCTURE_GENES + LEARNING_GENES
 
@@ -30,6 +32,7 @@ def shapes(d_in: int, hidden: int, d_out: int, d_ctx: int) -> dict:
         "P": (2, 5),
         "E": (d_ctx, hidden),
         "Eb": (hidden,),
+        "R": (2,),
     }
 
 
@@ -48,6 +51,7 @@ def random(n: int, shp: dict, device, gen: torch.Generator) -> dict:
         "P": r(*shp["P"]),
         "E": r(*shp["E"]) * d_ctx ** -0.5,
         "Eb": r(*shp["Eb"]),
+        "R": r(*shp["R"]),
     }
 
 
