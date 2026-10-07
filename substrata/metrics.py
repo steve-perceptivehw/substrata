@@ -55,5 +55,21 @@ def compute(w) -> dict:
         weight_drift=float((w.W1[a] - g["W1g"][a]).abs().mean()),
         # habitat match: inflow where cells live vs. the grid average (1 = no preference)
         habitat_match=float(w.inflow[a].mean() / w.inflow.mean().clamp(min=1e-9)),
+        # Layer 2
+        bonds_per_cell=float(w.bond[a].float().sum(1).mean()),
+        bonded_frac=float((w.bond[a].any(1)).float().mean()),
+        bond_flow_per_cell=st["bond_flow"] / t / n,
     )
+    if w.cfg.layers.bonds:
+        if w.labels is None or w.tick % w.cfg.observe.group_every == 0:
+            w.find_groups()
+        lab = w.labels[a]
+        sizes = torch.bincount(lab, minlength=w.N + 1).float()
+        sizes = sizes[sizes > 0]
+        m.update(
+            group_size_mean=float((sizes ** 2).sum() / sizes.sum()),   # the size of the group a typical cell is in
+            group_size_max=int(sizes.max()),
+            groups_5plus=int((sizes >= 5).sum()),
+            in_groups_5plus=float(sizes[sizes >= 5].sum() / n),
+        )
     return m

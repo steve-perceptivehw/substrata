@@ -24,7 +24,7 @@ from .observers import CSVObserver, RerunObserver, render
 from .world import World
 
 SAVE_KEYS = ["alive", "energy", "age", "lifespan", "gen", "state", "msg", "group", "give_out",
-             "W1", "W2", "gate", "active"]   # M1, M2 are rebuilt from the genome
+             "W1", "W2", "gate", "active", "bond"]   # M1, M2 are rebuilt from the genome
 
 
 def save_checkpoint(w: World, path: str):

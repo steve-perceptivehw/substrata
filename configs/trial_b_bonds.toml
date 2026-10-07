@@ -1,0 +1,39 @@
+# Same as the matching trial, with Layer 2 on: cells can bond to neighbors by mutual choice,
+# energy evens out inside a bonded group, and a newborn starts bonded to its parent.
+# Question: do bonds protect sharing from the selfish sweep?
+
+# Trial B: mild scarcity in a patchy world.
+# Same as trial A except the energy. Mean inflow drops from 0.5 to 0.35 (near what an
+# early cell spends), and it is concentrated in rich patches with poor zones between.
+# Question: does a world where location matters give brains something to earn?
+
+name = "trial_b_bonds"
+seed = 0
+ticks = 300000
+
+[substrate]
+grid = 128
+inflow = 0.35
+field = "patches"
+contrast = 0.8
+patch_scale = 16
+field_seed = 1
+
+[cell]
+hidden = 32
+msg = 8
+
+[life]
+seed_mode = "clone"
+lifespan = 300
+
+[layers]
+plasticity = true
+expression = "context"
+layer3 = "on"
+bonds = true
+
+[observe]
+metrics_every = 10
+image_every = 100
+rerun = "spawn"

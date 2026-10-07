@@ -106,6 +106,45 @@ def test_energy_conserved_with_moving_seasons():
         assert abs(w.total_energy() - expected) < 1e-2 * max(1.0, abs(before))
 
 
+def test_bonds_are_symmetric_and_conserve_energy():
+    w = small(**{"layers.bonds": "true", "substrate.field": "patches", "substrate.contrast": 0.8})
+    for _ in range(80):
+        before = w.total_energy()
+        w.reset_stats()
+        w.step()
+        st = {k: float(v) for k, v in w.st.items()}
+        expected = before + st["inflow_in"] - st["cost_out"] - st["transit_loss"] - st["overflow"] - st["death_loss"]
+        assert abs(w.total_energy() - expected) < 1e-2 * max(1.0, abs(before))
+        # bond[p, k] must match bond[p + d_k, opp(k)]
+        nbr = grid.neighbor_index(w.G, "cpu")
+        opp = torch.tensor(grid.OPP)
+        mirror = w.bond[nbr, opp.view(1, -1).expand(w.N, -1)]
+        assert torch.equal(w.bond, mirror)
+        assert not w.bond[~w.alive].any()
+    assert w.bond.any(), "expected some bonds to form"
+
+
+def test_bonds_off_means_no_bonds():
+    w = small()
+    for _ in range(60):
+        w.step()
+    assert not w.bond.any()
+    assert float(w.group.abs().sum()) == 0
+
+
+def test_groups_found():
+    w = small(**{"layers.bonds": "true"})
+    for _ in range(150):
+        w.step()
+    lab = w.find_groups()
+    a = w.alive
+    # bonded neighbors share a label
+    nbr = grid.neighbor_index(w.G, "cpu")
+    p, k = w.bond.nonzero(as_tuple=True)
+    assert torch.equal(lab[p], lab[nbr[p, k]])
+    assert (lab[a] <= torch.arange(w.N)[a]).all()
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

@@ -47,6 +47,7 @@ class EnergyCfg:
     msg_cost: float = 0.01          # per unit of |message| sent (bandwidth)
     transfer_rate: float = 0.1      # max fraction of own energy a cell can give away per tick
     transfer_loss: float = 0.05     # fraction lost in transit
+    bond_cost: float = 0.005        # per bond per tick, paid by each side (keeping a link costs bandwidth)
 
 
 @dataclass
@@ -67,7 +68,11 @@ class LayersCfg:
     expression: str = "context"     # "context" or "fixed"
     express_every: int = 10
     heritable_marks: bool = False   # reserved
-    bonds: bool = False             # Layer 2 (next build step)
+    bonds: bool = False             # Layer 2: cells may bond to neighbors and share energy inside a group
+    bond_form: float = 0.25         # a bond forms when both cells' bond outputs toward each other exceed this
+    bond_break: float = -0.25       # and breaks when either side's output drops below this
+    bond_share: float = 0.5         # how fast energy evens out across a bond (0 = not at all, 1 = fast)
+    bond_at_birth: bool = True      # a newborn starts bonded to its parent (it can break away later)
     layer3: str = "on"              # "off" (no mutation), "frozen_learning", "on", "neutral" (not yet built)
 
 
@@ -84,10 +89,11 @@ class ObserveCfg:
     metrics_every: int = 10
     image_every: int = 100
     channels: list = field(default_factory=lambda: [
-        "energy", "genome", "inflow", "age", "active_params", "messages", "transfers", "generation"])
+        "energy", "genome", "inflow", "groups", "bonds", "age", "active_params", "messages", "transfers", "generation"])
     rerun: str = "spawn"            # "spawn" (local viewer), "save" (.rrd file), "serve" (web viewer on LAN), "none"
     serve_port: int = 9090
     checkpoint_every: int = 20000
+    group_every: int = 100          # ticks between finding bonded groups (for metrics and the groups view)
     color_scale: float = 1.0        # genome color sensitivity to genetic drift
 
 

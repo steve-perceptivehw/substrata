@@ -1,4 +1,4 @@
-# Substrata: Design Principles (outline v0.5)
+# Substrata: Design Principles (outline v0.6)
 
 *Origin: the original Stratum concept, a cellular automaton whose cells learn and evolve their own rules.*
 
@@ -105,6 +105,10 @@
 | Senescence (max lifespan) | 300 ticks | `life.lifespan` | very long lifespan; does turnover continue from starvation alone? |
 | Inflow on empty sites is lost | lost | (not yet a switch) | let empty sites store inflow for newborns |
 | Energy in a dying cell is lost | lost | (not yet a switch) | return it to neighbors (decomposition) |
+| Bonds need mutual consent | both outputs > 0.25 to form, either < -0.25 to break | `layers.bond_form`, `layers.bond_break` | one-sided bonding (parasitic attachment) |
+| Newborn bonded to parent | on | `layers.bond_at_birth` | off: do groups still form, and are they still kin? |
+| Energy evens out within a group | share rate 0.5 | `layers.bond_share` | 0 (bonds without sharing) vs. faster sharing |
+| Bonds cost upkeep | 0.005 per bond per tick | `energy.bond_cost` | free bonds |
 | Expression gate is binary | hard on/off, every 10 ticks | `layers.express_every` | soft gate; faster updates |
 
 ## 12. Open questions
@@ -130,7 +134,8 @@ What exists in code now, and the choices made inside it. All values live in conf
 - **Layer 3 modes:** `off` (exact copies), `frozen_learning` (plasticity and expression genes never mutate), `on`; `neutral` not built yet
 - **Inflow field:** spatial shape (uniform, patches, gradient, file) times a time pattern (none, global season, travelling wave, drifting patches); always normalized to the configured mean, so runs differ in where and when energy arrives, not how much
 - **Habitat match metric:** inflow where cells live divided by the grid average (1 = no preference)
-- **Not built yet:** bonds (Layer 2), neutral drift control, rewiring, heritable marks, assembly and causal emergence metrics
+- **Layer 2 (bonds):** each cell outputs a bond preference toward each neighbor; a bond forms by mutual choice and breaks when either side rejects it. A newborn starts bonded to its parent. Energy evens out across bonds each tick (sharing that reaches only the group), each bond costs upkeep, and each cell's group context is a running average of its bonded neighbors' state, fed back into its network and gene expression. Groups are found by label propagation for metrics and the groups view
+- **Not built yet:** neutral drift control, rewiring, heritable marks, assembly and causal emergence metrics
 
 ## 14. Trial sequence
 

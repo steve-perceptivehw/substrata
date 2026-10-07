@@ -9,7 +9,10 @@ One tick:
   5. die        energy <= 0 or age past lifespan
   6. reproduce  cells with enough energy that choose to, into an empty neighbor; child genome mutated (Layer 3)
 
-Layer 2 (bonds) is not built yet; the group context channel exists and carries zeros.
+Layer 2 (bonds, when layers.bonds is on): between steps 2 and 4, cells form and break bonds with
+neighbors by mutual choice. Energy evens out across bonds (the membrane: sharing reaches only the
+group), and each cell's group context is a running average of its bonded neighbors' state, which
+feeds back into its network and its gene expression (the downward channel).
 """
 
 from __future__ import annotations
@@ -81,6 +84,9 @@ class World:
         self.msg = self._zeros(N, self.M)
         self.group = self._zeros(N, self.GC)          # Layer 2 downward channel (zeros until bonds exist)
         self.give_out = self._zeros(N)                 # last tick's total transfer out (for viewing)
+        self.bond = torch.zeros(N, K, dtype=torch.bool, device=self.dev)   # bond[p, k]: p is bonded to p + DIRS[k]
+        self.labels = None                             # bonded-group label per site (refreshed every group_every ticks)
+        self._opp = torch.tensor(grid.OPP, device=self.dev)
         self.W1 = self.genome["W1g"].clone()
         self.W2 = self.genome["W2g"].clone()
         self.M1 = (self.genome["M1l"] > 0).float()
@@ -103,7 +109,7 @@ class World:
     def reset_stats(self):
         self.st = {"births": 0, "deaths": 0, "starved": 0, "transfer": 0.0, "ticks": 0,
                    "inflow_in": 0.0, "cost_out": 0.0, "overflow": 0.0, "transit_loss": 0.0,
-                   "death_loss": 0.0}
+                   "death_loss": 0.0, "bond_flow": 0.0}
 
     # ------------------------------------------------------------ expression
     def _context(self, idx):
@@ -167,7 +173,7 @@ class World:
         o_transfer = out[:, o:o + K]; o += K
         o_repro = out[:, o]; o += 1
         o_dir = out[:, o:o + K]; o += K
-        # o_bond = out[:, o:o + K]   (Layer 2, next step)
+        o_bond = out[:, o:o + K]
 
         # 3. learn
         if cfg.layers.plasticity and self.tick % cfg.layers.plasticity_every == 0:
@@ -177,16 +183,36 @@ class World:
         self.state = new_state * alive_f.unsqueeze(1)
         self.msg = new_msg * alive_f.unsqueeze(1)
 
+        # Layer 2: bonds and the group context
+        Ly = cfg.layers
+        if Ly.bonds:
+            nb_alive = occ > 0.5
+            theirs = grid.gather(o_bond, G).gather(2, self._opp.view(1, K, 1).expand(N, K, 1)).squeeze(2)
+            form = (o_bond > Ly.bond_form) & (theirs > Ly.bond_form)
+            brk = (o_bond < Ly.bond_break) | (theirs < Ly.bond_break)
+            self.bond = (self.bond | form) & ~brk & alive.unsqueeze(1) & nb_alive
+            bf = self.bond.float()
+            nb_group = grid.gather(self.group, G)                                   # [N, K, GC]
+            self.group = ((self.state[:, :self.GC] + (bf.unsqueeze(2) * nb_group).sum(1))
+                          / (1 + bf.sum(1, keepdim=True))) * alive_f.unsqueeze(1)
+        n_bonds = self.bond.float().sum(1)
+
         # 4. energy
         e = self.energy + self.inflow * alive_f
         cost = (En.base_cost + En.param_cost_full * self.active / self.p_max
-                + En.msg_cost * self.msg.abs().sum(1)) * alive_f
+                + En.msg_cost * self.msg.abs().sum(1) + En.bond_cost * n_bonds) * alive_f
         e = e - cost
         give = torch.sigmoid(o_transfer) * (En.transfer_rate / K) * e.clamp(min=0).unsqueeze(1) * occ
         give = give * alive_f.unsqueeze(1)
         received = grid.send(give, G).sum(1) * (1 - En.transfer_loss)
         give_tot = give.sum(1)
         e = e - give_tot + received
+        if Ly.bonds:
+            # energy evens out across each bond; flows are equal and opposite, so nothing is created or lost
+            e_nb = grid.gather(e.unsqueeze(1), G).squeeze(-1)
+            delta = Ly.bond_share * (self.bond.float() * (e_nb - e.unsqueeze(1))).sum(1) / K
+            e = e + delta
+            self.st["bond_flow"] = self.st["bond_flow"] + delta.clamp(min=0).sum().detach()
         overflow = (e - En.max).clamp(min=0)
         e = e - overflow
         self.give_out = give_tot
@@ -225,12 +251,19 @@ class World:
         e = torch.where(self.alive, e, torch.zeros_like(e))
         self.state[dying] = 0
         self.msg[dying] = 0
+        self.group[dying] = 0
+        if Ly.bonds:   # bonds to the dead dissolve
+            self.bond &= self.alive.unsqueeze(1) & (grid.gather(self.alive.float().unsqueeze(1), G).squeeze(-1) > 0.5)
 
         # apply births
         e[q] = child_e
         self.energy = e
         if q.numel():
             self._birth(q, p)
+            if Ly.bonds and Ly.bond_at_birth:
+                kq = kw[q]
+                self.bond[p, kq] = True
+                self.bond[q, self._opp[kq]] = True
 
         self.st["births"] += int(q.numel())
         self.st["deaths"] = self.st["deaths"] + dying.sum()
@@ -256,6 +289,23 @@ class World:
         self.state[q] = 0
         self.msg[q] = 0
         self._express(q)
+
+    # ---------------------------------------------------------------- groups
+    @torch.no_grad()
+    def find_groups(self, max_iter: int = 1024):
+        """Label each living cell with its bonded group (the smallest site index in it)."""
+        big = self.N
+        lab = torch.where(self.alive, torch.arange(self.N, device=self.dev), torch.full((self.N,), big, device=self.dev))
+        for _ in range(max_iter):
+            nb = grid.gather(lab.unsqueeze(1).float(), self.G).squeeze(-1).long()
+            nb = torch.where(self.bond, nb, torch.full_like(nb, big))
+            new = torch.minimum(lab, nb.min(1).values)
+            new = torch.where(self.alive, new, lab)
+            if torch.equal(new, lab):
+                break
+            lab = new
+        self.labels = lab
+        return lab
 
     # --------------------------------------------------------------- viewing
     @torch.no_grad()

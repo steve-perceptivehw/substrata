@@ -65,6 +65,10 @@ python -m substrata.run --config configs/trial_a.toml --rerun save
 python -m substrata.run --config configs/trial_b.toml
 python -m substrata.run --config configs/trial_c.toml
 
+# Layer 2 on: bonds and shared energy inside groups
+python -m substrata.run --config configs/trial_b_bonds.toml
+python -m substrata.run --config configs/trial_c_bonds.toml
+
 # preview an inflow field without running (stats, optional picture)
 python -m substrata.inflow --config configs/trial_c.toml --png field.png
 

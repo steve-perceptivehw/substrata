@@ -63,6 +63,17 @@ def render(w, channels) -> dict:
             v = w.inflow.view(G, G).cpu().numpy()
             out[ch] = colormap(v / max(float(w.field.base.max()) * w.cfg.substrate.inflow * (1 + w.cfg.substrate.season_amp), 1e-9))
             continue          # inflow is shown everywhere, occupied or not
+        elif ch == "bonds":
+            img = scalar(w.bond.float().sum(1), 0, 4)
+        elif ch == "groups":
+            if w.labels is None or not w.cfg.layers.bonds:
+                img = np.zeros((G, G, 3), dtype=np.uint8) + 60
+            else:
+                lab = w.labels.view(G, G).cpu().numpy().astype(np.int64)
+                nb = w.bond.any(1).view(G, G).cpu().numpy()
+                h = (lab * 2654435761) % (2 ** 32)
+                img = np.stack([(h >> 8) & 255, (h >> 16) & 255, (h >> 24) & 255], -1).astype(np.uint8) // 2 + 100
+                img[~nb] = 70     # unbonded cells in gray
         elif ch == "generation":
             a = w.alive
             hi = float(w.gen[a].max()) if a.any() else 1.0
@@ -109,6 +120,9 @@ CHART_GROUPS = {  # each group shares an axis, so keep similar scales together
     "learning": ["weight_drift"],
     "generations": ["generation_mean"],
     "habitat": ["habitat_match"],
+    "bonds": ["bonds_per_cell", "bonded_frac"],
+    "groups": ["group_size_mean", "group_size_max"],
+    "group_sharing": ["bond_flow_per_cell", "transfer_per_cell"],
     "diversity": ["div_weights", "div_learning", "div_masks"],
 }
 
