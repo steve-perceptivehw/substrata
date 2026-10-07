@@ -1,0 +1,760 @@
+<title>Swarmkeeper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: the meadow canvas is the stage; a narrow "keeper's notes" panel sits beside it and stacks underneath on narrow screens.
+   One deliberate look (dusky meadow), single theme by choice. */
+:root {
+  --bg: #15180f;
+  --panel: #1e2417;
+  --raised: #262e1d;
+  --ink: #eeedd9;
+  --muted: #a9ac90;
+  --line: #3a4329;
+  --treat: #f2c14e;
+  --call: #7fd6c9;
+  --born: #f19bb4;
+  --display: "Pixelify Sans", ui-monospace, "Cascadia Mono", monospace;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 14px; line-height: 1.45; }
+.wrap { max-width: 1440px; margin: 0 auto; padding-inline: 16px; padding-block: 16px; display: grid;
+  grid-template-columns: minmax(0, 1fr) 310px; gap: 16px; align-items: start; }
+@media (max-width: 920px) { .wrap { grid-template-columns: minmax(0, 1fr); } }
+.stage { min-width: 0; }
+.screen { position: relative; }
+canvas#game { display: block; width: 100%; max-width: 100%; height: auto; aspect-ratio: 320 / 200;
+  image-rendering: pixelated; image-rendering: crisp-edges; border-radius: 6px; background: #33421f;
+  cursor: crosshair; touch-action: none; outline: none; }
+canvas#game:focus-visible { box-shadow: 0 0 0 2px var(--call); }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+button { font-family: var(--display); font-size: 15px; letter-spacing: 0.02em; color: var(--ink); background: var(--raised);
+  border: 1px solid var(--line); border-radius: 4px; padding: 6px 12px; cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button:focus-visible { outline: 2px solid var(--call); outline-offset: 2px; }
+button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+button kbd { font-family: var(--body); font-size: 11px; opacity: 0.7; margin-left: 4px; }
+.night[hidden] { display: none; }
+.night { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(10, 12, 24, 0.78);
+  border-radius: 6px; padding: 16px; }
+.night .card { max-width: 420px; text-align: center; display: grid; gap: 10px; }
+.night h2 { font-family: var(--display); font-weight: 600; font-size: 26px; margin: 0; text-wrap: balance; }
+.night p { margin: 0; color: var(--muted); }
+.night ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.night li b { color: var(--ink); }
+aside { display: grid; gap: 14px; min-width: 0; }
+aside section { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; display: grid; gap: 8px; }
+h1 { font-family: var(--display); font-weight: 600; font-size: 30px; line-height: 1; margin: 0; letter-spacing: 0.01em; }
+h3 { font-family: var(--display); font-weight: 400; font-size: 13px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin: 0; }
+.lede { margin: 0; color: var(--muted); }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.stat { display: grid; }
+.stat b { font-family: var(--display); font-size: 22px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 12px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+canvas#chart { width: 100%; height: auto; aspect-ratio: 560 / 240; display: block; }
+.who { display: grid; gap: 6px; }
+.who .name { font-family: var(--display); font-size: 20px; }
+.who .meta { font-size: 12px; color: var(--muted); }
+.bar { display: grid; grid-template-columns: 92px 1fr 34px; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.bar .track { height: 6px; background: var(--raised); border-radius: 3px; position: relative; overflow: hidden; }
+.bar .fill { position: absolute; inset: 0 auto 0 0; border-radius: 3px; }
+.bar em { font-style: normal; font-variant-numeric: tabular-nums; text-align: right; color: var(--ink); }
+dl.keys { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 0; font-size: 13px; }
+dl.keys dt { font-family: var(--display); color: var(--treat); }
+dl.keys dd { margin: 0; color: var(--muted); }
+.note { font-size: 12px; color: var(--muted); margin: 0; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <div class="stage">
+    <div class="screen">
+    <canvas id="game" width="320" height="200" tabindex="0" aria-label="Meadow: your keeper and the critters"></canvas>
+    <div class="night" id="night" hidden>
+      <div class="card">
+        <h2 id="nightTitle">Night falls</h2>
+        <ul id="nightList"></ul>
+        <p id="nightNote"></p>
+        <div><button id="dawnBtn" type="button">Start day <kbd>Enter</kbd></button></div>
+      </div>
+    </div>
+    </div>
+    <div class="toolbar" role="toolbar" aria-label="Keeper actions">
+      <button id="bWhistle" type="button">Whistle <kbd>Space</kbd></button>
+      <button id="bShoo" type="button">Shoo <kbd>E</kbd></button>
+      <button id="mTreat" type="button" aria-pressed="true">Tap: treat</button>
+      <button id="mWalk" type="button" aria-pressed="false">Tap: walk</button>
+      <button id="mFlag" type="button" aria-pressed="false">Tap: flag</button>
+      <button id="bNight" type="button">End day <kbd>N</kbd></button>
+      <button id="bPause" type="button">Pause <kbd>P</kbd></button>
+      <button id="bSound" type="button" aria-pressed="false">Sound</button>
+    </div>
+  </div>
+
+  <aside>
+    <section>
+      <h1>Swarmkeeper</h1>
+      <p class="lede">Teach your critters with treats. What they learn today fades with them; what you reward decides who breeds tonight.</p>
+      <div class="stats">
+        <div class="stat"><b id="sDay">1</b><span>day</span></div>
+        <div class="stat"><b id="sPop">0</b><span>critters</span></div>
+        <div class="stat"><b id="sTreats">8</b><span>treats</span></div>
+      </div>
+    </section>
+
+    <section>
+      <h3>Do they come when called?</h3>
+      <canvas id="chart" width="560" height="240" aria-label="Call bond over days: learned and inborn"></canvas>
+      <div class="legend">
+        <span><i style="background: var(--call)"></i>learned (today)</span>
+        <span><i style="background: var(--born)"></i>inborn (genome)</span>
+        <span><i style="background: var(--treat)"></i>came within 1.5 s</span>
+      </div>
+      <p class="note" id="callNote">Whistle, then reward the ones that come.</p>
+    </section>
+
+    <section class="who" aria-live="polite">
+      <h3>Critter</h3>
+      <div id="who"><p class="note">Point at a critter to meet it.</p></div>
+    </section>
+
+    <section>
+      <h3>Controls</h3>
+      <dl class="keys">
+        <dt>WASD</dt><dd>walk</dd>
+        <dt>Click</dt><dd>toss a treat (or pet a critter beside you)</dd>
+        <dt>Space</dt><dd>whistle</dd>
+        <dt>E</dt><dd>shoo the ones near you</dd>
+        <dt>Right-click</dt><dd>plant the flag; Q pulls it up</dd>
+        <dt>N</dt><dd>end the day early</dd>
+      </dl>
+    </section>
+  </aside>
+</div>
+
+<script>
+(() => {
+"use strict";
+// ---------------------------------------------------------------- constants
+const W = 320, H = 200;
+const DAY_LEN = 80;                       // seconds of daylight
+const F = 8;                               // features a critter senses
+const K = 5;                               // behaviors it can choose
+const B = { COME: 0, FORAGE: 1, FLAG: 2, WANDER: 3, NEST: 4 };
+const BEH_NAME = ["coming to you", "foraging", "going to the flag", "wandering", "heading home"];
+const FEAT = ["bias", "whistle", "flag", "hunger", "food near", "you near", "you far", "shooed"];
+const NEST = { x: 34, y: 174 };
+const POP_CAP = 60;
+const TAU_ELIG = 2.5;                      // seconds a decision stays "credited" for a later reward
+
+// Instincts of the founding ancestor: forage when hungry or near food, drift home, avoid being shooed.
+// The whistle column starts empty: coming when called is the thing to teach.
+const ANCESTOR = [
+  /* COME   */ [0.0, 0, 0.0, 0.0, 0.0, 0.3, -0.3, -1.2],
+  /* FORAGE */ [-0.3, 0, 0.0, 1.6, 2.2, 0.0, 0.0, 0.0],
+  /* FLAG   */ [-1.0, 0, 0.6, 0.0, 0.0, 0.0, 0.0, 0.0],
+  /* WANDER */ [0.6, 0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.6],
+  /* NEST   */ [-0.3, 0, 0.0, -0.5, -0.8, 0.0, 0.0, 0.8],
+];
+
+const SYL = ["pip", "mo", "bun", "tiv", "lo", "kai", "fen", "nib", "zu", "rae", "tok", "mil", "wen", "bo", "sy", "quo", "dee", "pa", "ri", "oon"];
+
+// ---------------------------------------------------------------- helpers
+const rand = (a = 0, b = 1) => a + Math.random() * (b - a);
+const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const pick = (arr) => arr[(Math.random() * arr.length) | 0];
+const makeName = () => { const s = pick(SYL) + (Math.random() < 0.7 ? pick(SYL) : ""); return s[0].toUpperCase() + s.slice(1); };
+
+// ---------------------------------------------------------------- genome
+function founderGenome() {
+  const W0 = new Float32Array(K * F);
+  for (let k = 0; k < K; k++) for (let j = 0; j < F; j++) W0[k * F + j] = ANCESTOR[k][j] + gauss() * 0.45;
+  return { W0, eta: rand(0.6, 1.3), speed: rand(38, 62), appetite: rand(0.8, 1.2), hue: rand(0, 360) | 0,
+           ears: (Math.random() * 3) | 0, life: 4 + ((Math.random() * 3) | 0) };
+}
+function childGenome(g) {
+  const W0 = new Float32Array(g.W0);
+  for (let i = 0; i < W0.length; i++) if (Math.random() < 0.3) W0[i] += gauss() * 0.3;
+  return {
+    W0,
+    eta: clamp(g.eta + gauss() * 0.1, 0.05, 2.0),
+    speed: clamp(g.speed + gauss() * 3, 28, 78),
+    appetite: clamp(g.appetite + gauss() * 0.06, 0.6, 1.5),
+    hue: (g.hue + gauss() * 14 + 360) % 360 | 0,
+    ears: Math.random() < 0.08 ? (Math.random() * 3) | 0 : g.ears,
+    life: clamp(g.life + (Math.random() < 0.2 ? (Math.random() < 0.5 ? -1 : 1) : 0), 3, 7),
+  };
+}
+// How strongly whistle pulls toward "come" vs. other behaviors.
+function callBond(Wm) {
+  let avg = 0; for (let k = 0; k < K; k++) avg += Wm[k * F + 1];
+  return Wm[B.COME * F + 1] - avg / K;
+}
+
+// ---------------------------------------------------------------- world state
+const S = {
+  t: 0, day: 1, dayT: 0, paused: false, night: false, mode: "treat", sound: false,
+  player: { x: 160, y: 110, face: 1, step: 0, moving: false },
+  critters: [], foods: [], bushes: [], flag: null, rings: [], puffs: [],
+  whistleT: -99, whistleEvents: [], treats: 8, treatRegen: 0,
+  dayStats: null, log: [], hover: null, focus: null, nextId: 1,
+  keys: new Set(), mouse: { x: 0, y: 0, in: false },
+};
+
+function newCritter(g, x, y, gen, parent) {
+  return {
+    id: S.nextId++, name: makeName(), g, W: new Float32Array(g.W0), E: new Float32Array(K * F),
+    x, y, vx: 0, vy: 0, face: 1, bob: rand(0, 6), beh: B.WANDER, decT: rand(0, 0.5), wanderA: rand(0, 6.28),
+    energy: 60, age: 0, gen, parent, faint: 0, shooedT: -99, emote: null, emoteT: 0, ringA: rand(0, 6.28),
+    treats: 0, pets: 0, blink: rand(1, 4), lastBeh: B.WANDER, alive: true,
+  };
+}
+
+function resetDayStats() {
+  S.dayStats = { born: 0, died: 0, starved: 0, old: 0, whistles: 0, rateSum: 0, rateN: 0, treatsGiven: 0 };
+}
+
+function setup() {
+  S.bushes = [
+    { x: 252, y: 44 }, { x: 60, y: 52 }, { x: 278, y: 160 }, { x: 150, y: 30 }, { x: 196, y: 176 },
+  ].map(b => ({ ...b, berries: 3, regen: rand(0, 5) }));
+  for (let i = 0; i < 14; i++) {
+    const c = newCritter(founderGenome(), NEST.x + rand(-20, 40), NEST.y + rand(-40, 0), 1, null);
+    c.age = (Math.random() * 2) | 0;
+    S.critters.push(c);
+  }
+  resetDayStats();
+}
+
+// ---------------------------------------------------------------- sound (starts only after the Sound button)
+let actx = null;
+function tone(f0, f1, dur, type = "sine", vol = 0.08) {
+  if (!S.sound) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), gN = actx.createGain(), t = actx.currentTime;
+    o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    gN.gain.setValueAtTime(vol, t); gN.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(gN).connect(actx.destination); o.start(t); o.stop(t + dur);
+  } catch (e) { /* audio unavailable */ }
+}
+const sfx = {
+  whistle: () => { tone(1500, 2300, 0.12); setTimeout(() => tone(2300, 1700, 0.16), 130); },
+  munch: () => tone(320, 180, 0.08, "square", 0.04),
+  toss: () => tone(600, 900, 0.07, "triangle", 0.05),
+  pet: () => tone(700, 1100, 0.15, "sine", 0.06),
+  shoo: () => tone(200, 90, 0.2, "sawtooth", 0.05),
+  pop: () => tone(900, 1400, 0.1, "sine", 0.05),
+};
+
+// ---------------------------------------------------------------- learning
+function features(c) {
+  const f = new Float32Array(F);
+  const dp = dist(c, S.player);
+  f[0] = 1;
+  f[1] = dp < 230 ? Math.exp(-(S.t - S.whistleT) / 1.5) : 0;
+  f[2] = S.flag ? 1 : 0;
+  f[3] = 1 - c.energy / 100;
+  c.food = nearestFood(c, 72);
+  f[4] = c.food ? 1 : 0;
+  f[5] = dp < 45 ? 1 : 0;
+  f[6] = dp > 130 ? 1 : 0;
+  f[7] = Math.exp(-(S.t - c.shooedT) / 2.0);
+  return f;
+}
+function dusk() { return clamp((S.dayT - DAY_LEN * 0.82) / (DAY_LEN * 0.18), 0, 1); }
+
+function decide(c) {
+  const f = features(c);
+  const logits = new Float32Array(K);
+  let mx = -1e9;
+  for (let k = 0; k < K; k++) {
+    let z = 0; for (let j = 0; j < F; j++) z += c.W[k * F + j] * f[j];
+    if (k === B.NEST) z += 3 * dusk();          // instinct: go home at dusk
+    logits[k] = z; if (z > mx) mx = z;
+  }
+  let sum = 0; const p = new Float32Array(K);
+  for (let k = 0; k < K; k++) { p[k] = Math.exp(logits[k] - mx); sum += p[k]; }
+  let r = Math.random() * sum, a = K - 1;
+  for (let k = 0; k < K; k++) { r -= p[k]; if (r <= 0) { a = k; break; } }
+  for (let k = 0; k < K; k++) {
+    const g = (k === a ? 1 : 0) - p[k] / sum;
+    for (let j = 0; j < F; j++) c.E[k * F + j] += g * f[j];
+  }
+  c.lastBeh = c.beh; c.beh = a; c.decT = rand(0.4, 0.75);
+  // Track responses to the most recent whistle.
+  const ev = S.whistleEvents[S.whistleEvents.length - 1];
+  if (ev && !ev.done && a === B.COME && c.lastBeh !== B.COME && S.t - ev.t < 1.5 && ev.heard.has(c.id)) {
+    ev.came.add(c.id); emote(c, "!");
+  }
+}
+
+// The heart of it: a reward credits whatever the critter recently chose, in proportion to how surprising the choice was.
+function reward(c, r) {
+  const eta = c.g.eta;
+  for (let i = 0; i < K * F; i++) c.W[i] = clamp(c.W[i] + eta * r * c.E[i], -6, 6);
+}
+
+// ---------------------------------------------------------------- world helpers
+function nearestFood(c, range) {
+  let best = null, bd = range;
+  for (const fd of S.foods) { if (fd.air > 0) continue; const d = dist(c, fd); if (d < bd) { bd = d; best = fd; } }
+  for (const b of S.bushes) { if (b.berries <= 0) continue; const d = dist(c, b); if (d < bd) { bd = d; best = b; } }
+  return best;
+}
+function emote(c, kind) { c.emote = kind; c.emoteT = 1.1; }
+function alive() { return S.critters.filter(c => c.alive); }
+
+// ---------------------------------------------------------------- player actions
+function whistle() {
+  if (S.night || S.t - S.whistleT < 0.6) return;
+  S.whistleT = S.t;
+  S.rings.push({ x: S.player.x, y: S.player.y - 12, r: 4, max: 70, color: "#7fd6c9", life: 0.7 });
+  const heard = new Set();
+  for (const c of alive()) if (dist(c, S.player) < 230 && c.beh !== B.COME) heard.add(c.id);
+  S.whistleEvents.push({ t: S.t, heard, came: new Set(), done: false });
+  S.dayStats.whistles++;
+  for (const c of alive()) if (heard.has(c.id)) decide(c);   // hearing it prompts a fresh choice
+  sfx.whistle();
+}
+function shoo() {
+  if (S.night) return;
+  S.rings.push({ x: S.player.x, y: S.player.y - 6, r: 4, max: 52, color: "#e8836b", life: 0.45 });
+  for (const c of alive()) {
+    const d = dist(c, S.player);
+    if (d < 52) {
+      const ax = (c.x - S.player.x) / (d || 1), ay = (c.y - S.player.y) / (d || 1);
+      c.vx += ax * 90; c.vy += ay * 90; c.shooedT = S.t;
+      reward(c, -0.8); emote(c, "x"); c.decT = 0;
+    }
+  }
+  sfx.shoo();
+}
+function tapAt(x, y) {
+  if (S.night) return;
+  if (S.mode === "walk") { S.walkTo = { x, y }; return; }
+  if (S.mode === "flag") { S.flag = { x, y, t: S.t }; return; }
+  // Pet a critter right beside the keeper; otherwise toss a treat toward the point.
+  const c = critterAt(x, y);
+  if (c && dist(c, S.player) < 30) {
+    reward(c, 0.6); c.pets++; emote(c, "heart"); sfx.pet(); S.focus = c; return;
+  }
+  if (S.treats < 1) { S.puffs.push({ x: S.player.x, y: S.player.y - 26, text: "out of treats", life: 1 }); return; }
+  const dx = x - S.player.x, dy = y - S.player.y, d = Math.hypot(dx, dy), max = 120;
+  const tx = d > max ? S.player.x + dx / d * max : x, ty = d > max ? S.player.y + dy / d * max : y;
+  S.foods.push({ kind: "treat", sx: S.player.x, sy: S.player.y - 10, x: tx, y: ty, air: 0.45, airMax: 0.45, t: S.t });
+  S.treats--; S.dayStats.treatsGiven++; sfx.toss();
+}
+function critterAt(x, y) {
+  let best = null, bd = 10;
+  for (const c of alive()) { const d = Math.hypot(c.x - x, c.y - 4 - y); if (d < bd) { bd = d; best = c; } }
+  return best;
+}
+
+// ---------------------------------------------------------------- update
+function update(dt) {
+  S.t += dt; S.dayT += dt;
+  const P = S.player;
+  // keeper movement
+  let mx = 0, my = 0;
+  if (S.keys.has("a") || S.keys.has("arrowleft")) mx -= 1;
+  if (S.keys.has("d") || S.keys.has("arrowright")) mx += 1;
+  if (S.keys.has("w") || S.keys.has("arrowup")) my -= 1;
+  if (S.keys.has("s") || S.keys.has("arrowdown")) my += 1;
+  if (mx || my) S.walkTo = null;
+  if (S.walkTo) { const dx = S.walkTo.x - P.x, dy = S.walkTo.y - P.y, d = Math.hypot(dx, dy); if (d < 2) S.walkTo = null; else { mx = dx / d; my = dy / d; } }
+  const ml = Math.hypot(mx, my) || 1;
+  P.moving = !!(mx || my);
+  P.x = clamp(P.x + mx / ml * 78 * dt, 8, W - 8); P.y = clamp(P.y + my / ml * 78 * dt, 24, H - 4);
+  if (mx) P.face = mx > 0 ? 1 : -1;
+  if (P.moving) P.step += dt * 9;
+
+  // treats regenerate
+  S.treatRegen += dt; if (S.treatRegen > 2.5) { S.treatRegen = 0; S.treats = Math.min(8, S.treats + 1); }
+  // berries regrow
+  for (const b of S.bushes) { b.regen += dt; if (b.regen > 6 && b.berries < 4) { b.regen = 0; b.berries++; } }
+  // thrown treats land; old ones spoil
+  for (const fd of S.foods) if (fd.air > 0) fd.air = Math.max(0, fd.air - dt);
+  S.foods = S.foods.filter(fd => S.t - fd.t < 22);
+  // close out whistle events
+  for (const ev of S.whistleEvents) if (!ev.done && S.t - ev.t > 1.5) {
+    ev.done = true;
+    if (ev.heard.size) { S.dayStats.rateSum += ev.came.size / ev.heard.size; S.dayStats.rateN++; }
+    for (const c of alive()) if (ev.heard.has(c.id) && !ev.came.has(c.id) && c.beh !== B.COME && Math.random() < 0.5) emote(c, "?");
+  }
+
+  const cs = alive();
+  for (const c of cs) updateCritter(c, dt, cs);
+  S.critters = S.critters.filter(c => c.alive || c.ghost > 0);
+  for (const c of S.critters) if (!c.alive) c.ghost -= dt;
+
+  for (const r of S.rings) { r.life -= dt; r.r += (r.max / 0.6) * dt; }
+  S.rings = S.rings.filter(r => r.life > 0);
+  for (const p of S.puffs) { p.life -= dt; p.y -= 10 * dt; }
+  S.puffs = S.puffs.filter(p => p.life > 0);
+
+  if (S.dayT >= DAY_LEN) endDay();
+}
+
+function updateCritter(c, dt, cs) {
+  // eligibility fades: rewards credit recent choices more than old ones
+  const decay = Math.exp(-dt / TAU_ELIG);
+  for (let i = 0; i < K * F; i++) c.E[i] *= decay;
+  c.decT -= dt; if (c.decT <= 0) decide(c);
+  c.blink -= dt; if (c.blink < -0.12) c.blink = rand(2, 5);
+  if (c.emoteT > 0) c.emoteT -= dt;
+
+  // where it wants to go
+  let tx = c.x, ty = c.y, sp = c.g.speed;
+  const P = S.player;
+  switch (c.beh) {
+    case B.COME: {
+      const rr = 14 + (c.id % 5) * 3;
+      tx = P.x + Math.cos(c.ringA) * rr; ty = P.y + Math.sin(c.ringA) * rr * 0.6;
+      c.ringA += dt * 0.3; break;
+    }
+    case B.FORAGE: {
+      const fd = c.food && (c.food.berries === undefined ? (S.foods.includes(c.food) ? c.food : null) : (c.food.berries > 0 ? c.food : null));
+      if (fd) { tx = fd.x; ty = fd.y + (fd.berries !== undefined ? 6 : 0); } else { c.wanderA += gauss() * 0.4; tx = c.x + Math.cos(c.wanderA) * 20; ty = c.y + Math.sin(c.wanderA) * 20; sp *= 0.6; }
+      break;
+    }
+    case B.FLAG: if (S.flag) { tx = S.flag.x + Math.cos(c.ringA) * 10; ty = S.flag.y + 6 + Math.sin(c.ringA) * 5; c.ringA += dt * 0.6; } break;
+    case B.WANDER: c.wanderA += gauss() * 0.5; tx = c.x + Math.cos(c.wanderA) * 20; ty = c.y + Math.sin(c.wanderA) * 20; sp *= 0.5; break;
+    case B.NEST: tx = NEST.x + Math.cos(c.ringA) * 12; ty = NEST.y - 4 + Math.sin(c.ringA) * 5; break;
+  }
+  if (c.faint > 0) sp *= 0.25;
+  const dx = tx - c.x, dy = ty - c.y, d = Math.hypot(dx, dy);
+  let dvx = 0, dvy = 0;
+  if (d > 1.5) { const s = Math.min(sp, d * 3); dvx = dx / d * s; dvy = dy / d * s; }
+  // keep a little personal space
+  for (const o of cs) {
+    if (o === c) continue;
+    const ox = c.x - o.x, oy = c.y - o.y, od = Math.hypot(ox, oy);
+    if (od > 0 && od < 9) { dvx += ox / od * 30; dvy += oy / od * 30; }
+  }
+  const k = 1 - Math.exp(-dt * 6);
+  c.vx += (dvx - c.vx) * k; c.vy += (dvy - c.vy) * k;
+  c.x = clamp(c.x + c.vx * dt, 5, W - 5); c.y = clamp(c.y + c.vy * dt, 18, H - 3);
+  if (Math.abs(c.vx) > 3) c.face = c.vx > 0 ? 1 : -1;
+  c.bob += Math.hypot(c.vx, c.vy) * dt * 0.35;
+
+  // eat anything underfoot
+  for (const fd of S.foods) {
+    if (fd.air > 0 || fd.eaten) continue;
+    if (Math.hypot(fd.x - c.x, fd.y - c.y) < 5) {
+      fd.eaten = true; c.energy = Math.min(100, c.energy + 22); c.treats++;
+      reward(c, 1.2); emote(c, "heart"); sfx.munch(); c.decT = Math.min(c.decT, 0.3);
+    }
+  }
+  S.foods = S.foods.filter(fd => !fd.eaten);
+  for (const b of S.bushes) {
+    if (b.berries > 0 && Math.hypot(b.x - c.x, b.y + 6 - c.y) < 9 && c.energy < 90 && Math.random() < dt * 2) {
+      b.berries--; c.energy = Math.min(100, c.energy + 14); reward(c, 0.3); sfx.munch();
+    }
+  }
+
+  // metabolism
+  const atHome = Math.hypot(c.x - NEST.x, c.y - NEST.y) < 22;
+  const moving = Math.hypot(c.vx, c.vy) > 4;
+  c.energy -= dt * 1.05 * c.g.appetite * (atHome ? 0.5 : 1) * (moving ? 1 : 0.7) * (c.g.speed / 50);
+  if (c.energy <= 0) {
+    c.energy = 0; c.faint += dt;
+    if (c.faint > 6) { c.alive = false; c.ghost = 1.6; c.cause = "starved"; S.dayStats.died++; S.dayStats.starved++; }
+  } else c.faint = 0;
+}
+
+// ---------------------------------------------------------------- night
+function endDay() {
+  if (S.night) return;
+  S.night = true;
+  const cs = alive();
+  // close any pending whistle event
+  for (const ev of S.whistleEvents) if (!ev.done) { ev.done = true; if (ev.heard.size) { S.dayStats.rateSum += ev.came.size / ev.heard.size; S.dayStats.rateN++; } }
+  const learned = cs.length ? cs.reduce((s, c) => s + callBond(c.W), 0) / cs.length : 0;
+  const babies = [];
+  let starvedNight = 0, oldAge = 0;
+  for (const c of cs) {
+    c.energy -= 12;
+    let n = c.energy >= 85 ? 2 : c.energy >= 55 ? 1 : 0;
+    while (n-- > 0 && cs.length + babies.length < POP_CAP) {
+      const g = childGenome(c.g);
+      const b = newCritter(g, NEST.x + rand(-14, 14), NEST.y - rand(0, 10), c.gen + 1, c.name);
+      b.energy = 55; babies.push(b); c.energy -= 28;
+    }
+    c.age++;
+    if (c.age >= c.g.life) { c.alive = false; c.ghost = 0; c.cause = "old age"; oldAge++; }
+    else if (c.energy <= 0) { c.alive = false; c.ghost = 0; c.cause = "starved"; starvedNight++; }
+  }
+  S.critters.push(...babies);
+  S.dayStats.born += babies.length;
+  S.dayStats.died += oldAge + starvedNight; S.dayStats.old += oldAge; S.dayStats.starved += starvedNight;
+
+  const now = alive();
+  const inborn = now.length ? now.reduce((s, c) => s + callBond(c.g.W0), 0) / now.length : 0;
+  const rate = S.dayStats.rateN ? S.dayStats.rateSum / S.dayStats.rateN : null;
+  S.log.push({ day: S.day, pop: now.length, learned, inborn, rate, born: babies.length, died: S.dayStats.died });
+
+  // summary card
+  const star = babies.slice().sort((a, b) => callBond(b.g.W0) - callBond(a.g.W0))[0];
+  $("nightTitle").textContent = `Night ${S.day}`;
+  $("nightList").innerHTML = [
+    `<li><b>${babies.length}</b> born in the burrow</li>`,
+    `<li><b>${oldAge}</b> passed on from old age, <b>${S.dayStats.starved}</b> starved today</li>`,
+    `<li><b>${S.dayStats.treatsGiven}</b> treats given, <b>${S.dayStats.whistles}</b> whistles</li>`,
+    rate !== null ? `<li>On average <b>${Math.round(rate * 100)}%</b> came when you whistled</li>` : "",
+  ].join("");
+  $("nightNote").textContent = star && callBond(star.g.W0) > 0.4
+    ? `${star.name}, child of ${star.parent}, already perks up at your whistle. That instinct was inherited, not taught.`
+    : now.length === 0 ? "The burrow is empty. Reload the page to start a new colony."
+    : "Learned habits fade with each critter. Only the ones you fed enough to breed pass anything on.";
+  $("night").hidden = false;
+  $("dawnBtn").focus();
+  drawChart();
+  updatePanel(true);
+}
+function startDay() {
+  if (!S.night) return;
+  S.night = false; S.day++; S.dayT = 0; resetDayStats(); S.whistleEvents = [];
+  S.foods = []; S.flag = null;
+  for (const b of S.bushes) b.berries = 3;
+  for (const c of alive()) { c.E.fill(0); c.beh = B.WANDER; }
+  S.critters = alive();
+  $("night").hidden = true;
+  $("game").focus();
+  updatePanel(true);
+}
+
+// ---------------------------------------------------------------- drawing
+const cv = document.getElementById("game");
+const ctx = cv.getContext("2d");
+ctx.imageSmoothingEnabled = false;
+const ground = document.createElement("canvas"); ground.width = W; ground.height = H;
+(function paintGround() {
+  const g = ground.getContext("2d");
+  const greens = ["#3f5426", "#435a28", "#3b5024", "#47602b"];
+  for (let y = 0; y < H; y += 4) for (let x = 0; x < W; x += 4) { g.fillStyle = pick(greens); g.fillRect(x, y, 4, 4); }
+  for (let i = 0; i < 380; i++) { g.fillStyle = Math.random() < 0.5 ? "#557236" : "#33461d"; g.fillRect((rand(0, W)) | 0, (rand(0, H)) | 0, 1, 2); }
+  const fl = ["#e9e3b0", "#d9a7c7", "#f0d36a", "#b9d5ef"];
+  for (let i = 0; i < 34; i++) { const x = rand(4, W - 4) | 0, y = rand(20, H - 4) | 0; g.fillStyle = pick(fl); g.fillRect(x, y, 1, 1); g.fillStyle = "#6c8a3c"; g.fillRect(x, y + 1, 1, 1); }
+  // worn path to the burrow
+  g.fillStyle = "rgba(120, 96, 58, 0.35)";
+  for (let i = 0; i < 90; i++) { const t = i / 90; g.fillRect((NEST.x + (160 - NEST.x) * t + rand(-3, 3)) | 0, (NEST.y + (110 - NEST.y) * t + rand(-2, 2)) | 0, 3, 2); }
+})();
+
+function px(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), w, h); }
+
+function drawBurrow() {
+  const x = NEST.x, y = NEST.y;
+  px(x - 13, y - 6, 26, 8, "#6b4f2e"); px(x - 11, y - 8, 22, 3, "#7d5e37"); px(x - 8, y - 10, 16, 3, "#8a6a40");
+  px(x - 5, y - 6, 10, 6, "#1d140b"); px(x - 4, y - 7, 8, 2, "#2a1e10");
+}
+function drawBush(b) {
+  const x = b.x, y = b.y;
+  px(x - 9, y - 4, 18, 9, "#2c4a1f"); px(x - 7, y - 8, 14, 6, "#355a24"); px(x - 4, y - 10, 8, 4, "#3e6a2a"); px(x - 9, y + 4, 18, 2, "rgba(0,0,0,0.25)");
+  const spots = [[-5, -5], [3, -6], [-1, -1], [5, -1], [-6, 1]];
+  for (let i = 0; i < b.berries; i++) { const [sx, sy] = spots[i]; px(x + sx, y + sy, 2, 2, "#d7354a"); px(x + sx, y + sy, 1, 1, "#ff8a94"); }
+}
+function drawTreat(fd) {
+  let x = fd.x, y = fd.y, lift = 0;
+  if (fd.air > 0) { const t = 1 - fd.air / fd.airMax; x = fd.sx + (fd.x - fd.sx) * t; y = fd.sy + (fd.y - fd.sy) * t; lift = Math.sin(t * Math.PI) * 14; }
+  px(x - 1, y + 1, 3, 1, "rgba(0,0,0,0.3)");
+  px(x - 1, y - 2 - lift, 3, 3, "#f2c14e"); px(x - 1, y - 2 - lift, 1, 1, "#fff2b8");
+}
+function drawFlag(f) {
+  px(f.x, f.y - 12, 1, 12, "#d8d2b8"); px(f.x + 1, f.y - 12, 6, 2, "#7fd6c9"); px(f.x + 1, f.y - 10, 4, 2, "#7fd6c9"); px(f.x + 1, f.y - 8, 2, 1, "#7fd6c9");
+  px(f.x - 1, f.y, 3, 1, "rgba(0,0,0,0.3)");
+}
+function hsl(h, s, l) { return `hsl(${h} ${s}% ${l}%)`; }
+function drawCritter(c) {
+  const baby = c.age === 0, ghost = !c.alive;
+  const w = baby ? 7 : (c.energy > 75 ? 11 : 10), h = baby ? 5 : 7;
+  const hop = (Math.hypot(c.vx, c.vy) > 6 && !ghost) ? Math.abs(Math.sin(c.bob)) * 1.6 : 0;
+  const x = Math.round(c.x - w / 2), y = Math.round(c.y - h - hop);
+  if (ghost) ctx.globalAlpha = Math.max(0, c.ghost / 1.6) * 0.7;
+  const body = ghost ? "#cfd6e6" : hsl(c.g.hue, c.faint > 0 ? 15 : 52, c.faint > 0 ? 55 : 62);
+  const shade = ghost ? "#9aa3b8" : hsl(c.g.hue, 45, 46);
+  const belly = ghost ? "#e8edf6" : hsl(c.g.hue, 60, 80);
+  px(c.x - w / 2 + 1, c.y, w - 2, 1, "rgba(0,0,0,0.28)");               // shadow
+  px(x + 1, y, w - 2, h, body); px(x, y + 1, w, h - 2, body);              // rounded body
+  px(x + 1, y + h - 1, w - 2, 1, shade);
+  px(x + (c.face > 0 ? 1 : w - 4), y + h - 3, 3, 2, belly);
+  // ears
+  const ex = c.face > 0 ? x + w - 4 : x + 1;
+  if (c.g.ears === 0) { px(ex, y - 1, 1, 1, shade); px(ex + 2, y - 1, 1, 1, shade); }
+  else if (c.g.ears === 1) { px(ex, y - 2, 1, 2, shade); px(ex + 2, y - 2, 1, 2, shade); }
+  else { px(ex - 1, y - 1, 2, 1, shade); px(ex + 2, y - 1, 2, 1, shade); }
+  // eye and nose
+  const eyeX = c.face > 0 ? x + w - 3 : x + 2;
+  if (c.faint > 0 || ghost) px(eyeX, y + 2, 1, 1, "#3a2f2a");
+  else px(eyeX, y + (c.blink < 0 ? 2 : 1), 1, c.blink < 0 ? 1 : 2, "#1b1512");
+  px(c.face > 0 ? x + w - 1 : x, y + 3, 1, 1, "#e58ea2");
+  if (!baby && !ghost) { const fx = Math.sin(c.bob) > 0 ? 1 : 0; px(x + 1 + fx, y + h, 1, 1, shade); px(x + w - 3 + fx, y + h, 1, 1, shade); }
+  ctx.globalAlpha = 1;
+  if (c === S.hover || c === S.focus) { ctx.strokeStyle = c === S.hover ? "#eeedd9" : "rgba(238,237,217,0.5)"; ctx.lineWidth = 1; ctx.strokeRect(x - 2.5, y - 3.5, w + 5, h + 6); }
+  if (c.emoteT > 0 && c.emote) drawEmote(c.x, y - 4, c.emote);
+  if (S.night === false && dusk() > 0.6 && c.beh === B.NEST && Math.hypot(c.x - NEST.x, c.y - NEST.y) < 20 && Math.sin(S.t * 2 + c.id) > 0.6) drawEmote(c.x, y - 4, "z");
+}
+function drawEmote(x, y, kind) {
+  x = Math.round(x); y = Math.round(y);
+  if (kind === "heart") { px(x - 2, y - 4, 2, 2, "#f19bb4"); px(x + 1, y - 4, 2, 2, "#f19bb4"); px(x - 2, y - 3, 5, 2, "#f19bb4"); px(x - 1, y - 1, 3, 1, "#f19bb4"); px(x, y, 1, 1, "#f19bb4"); }
+  else if (kind === "!") { px(x, y - 5, 1, 4, "#f2c14e"); px(x, y, 1, 1, "#f2c14e"); }
+  else if (kind === "?") { px(x - 1, y - 5, 3, 1, "#cfd6e6"); px(x + 1, y - 4, 1, 1, "#cfd6e6"); px(x, y - 3, 1, 1, "#cfd6e6"); px(x, y, 1, 1, "#cfd6e6"); }
+  else if (kind === "x") { px(x - 2, y - 4, 1, 1, "#e8836b"); px(x + 2, y - 4, 1, 1, "#e8836b"); px(x - 1, y - 3, 3, 1, "#e8836b"); px(x - 2, y - 2, 1, 1, "#e8836b"); px(x + 2, y - 2, 1, 1, "#e8836b"); }
+  else if (kind === "z") { px(x, y - 5, 3, 1, "#cfd6e6"); px(x + 1, y - 4, 1, 1, "#cfd6e6"); px(x, y - 3, 3, 1, "#cfd6e6"); }
+}
+function drawKeeper(P) {
+  const x = Math.round(P.x), y = Math.round(P.y), f = P.face;
+  const leg = P.moving ? Math.round(Math.sin(P.step)) : 0;
+  px(x - 5, y, 10, 2, "rgba(0,0,0,0.3)");
+  px(x - 3, y - 5, 2, 5 + leg, "#3c3f57"); px(x + 1, y - 5, 2, 5 - leg, "#3c3f57");      // legs
+  px(x - 4, y - 13, 8, 9, "#c7653f"); px(x - 4, y - 6, 8, 1, "#8f4529");                   // coat
+  px(x + (f > 0 ? 3 : -5), y - 12, 2, 6, "#b55a37");                                        // arm
+  px(x - 3, y - 19, 6, 6, "#f0c9a0");                                                        // face
+  px(x + (f > 0 ? 1 : -2), y - 17, 1, 1, "#1b1512");                                        // eye
+  px(x - 5, y - 21, 10, 2, "#5f6d3a"); px(x - 3, y - 23, 6, 3, "#6f7f45");                  // hat
+  px(x + (f > 0 ? 4 : -6), y - 11, 2, 2, "#f2c14e");                                        // treat pouch
+}
+function drawHud() {
+  // daylight bar
+  const t = S.dayT / DAY_LEN;
+  px(6, 6, 82, 5, "rgba(0,0,0,0.35)"); px(7, 7, Math.round(80 * (1 - t)), 3, t > 0.82 ? "#e8836b" : "#f2c14e");
+  ctx.font = "8px 'Pixelify Sans', monospace"; ctx.fillStyle = "#eeedd9"; ctx.fillText(`Day ${S.day}`, 92, 11);
+  for (let i = 0; i < 8; i++) px(6 + i * 5, 14, 3, 3, i < S.treats ? "#f2c14e" : "rgba(0,0,0,0.35)");
+  if (S.paused) { ctx.fillStyle = "#eeedd9"; ctx.font = "16px 'Pixelify Sans', monospace"; ctx.fillText("Paused", W / 2 - 24, H / 2); }
+}
+function draw() {
+  ctx.drawImage(ground, 0, 0);
+  drawBurrow();
+  if (S.flag) drawFlag(S.flag);
+  const sprites = [];
+  for (const b of S.bushes) sprites.push({ y: b.y + 4, d: () => drawBush(b) });
+  for (const fd of S.foods) sprites.push({ y: fd.y, d: () => drawTreat(fd) });
+  for (const c of S.critters) sprites.push({ y: c.y, d: () => drawCritter(c) });
+  sprites.push({ y: S.player.y, d: () => drawKeeper(S.player) });
+  sprites.sort((a, b) => a.y - b.y).forEach(s => s.d());
+  for (const r of S.rings) { ctx.globalAlpha = Math.max(0, r.life / 0.7); ctx.strokeStyle = r.color; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(r.x, r.y, r.r, r.r * 0.6, 0, 0, Math.PI * 2); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+  for (const p of S.puffs) { ctx.font = "8px 'Pixelify Sans', monospace"; ctx.fillStyle = "#eeedd9"; ctx.fillText(p.text, p.x - 24, p.y); }
+  // evening light
+  const dk = dusk();
+  if (dk > 0) { ctx.fillStyle = `rgba(40, 30, 80, ${dk * 0.38})`; ctx.fillRect(0, 0, W, H); }
+  drawHud();
+}
+
+// ---------------------------------------------------------------- panel
+const $ = (id) => document.getElementById(id);
+let lastPanel = 0;
+function bar(label, v, max, color) {
+  const pct = clamp((v + max) / (2 * max), 0, 1) * 100;
+  return `<div class="bar"><span>${label}</span><div class="track"><div class="fill" style="width:${pct.toFixed(0)}%;background:${color}"></div></div><em>${v >= 0 ? "+" : ""}${v.toFixed(1)}</em></div>`;
+}
+function updatePanel(force) {
+  if (!force && S.t - lastPanel < 0.25) return;
+  lastPanel = S.t;
+  $("sDay").textContent = S.day; $("sPop").textContent = alive().length; $("sTreats").textContent = S.treats;
+  const c = S.hover || (S.focus && S.focus.alive ? S.focus : null);
+  if (!c) { $("who").innerHTML = '<p class="note">Point at a critter to meet it.</p>'; return; }
+  const energyPct = Math.round(c.energy);
+  $("who").innerHTML = `
+    <div class="name" style="color:${hsl(c.g.hue, 60, 74)}">${c.name}</div>
+    <div class="meta">Generation ${c.gen}${c.parent ? `, child of ${c.parent}` : ", founder"} · day ${c.age + 1} of about ${c.g.life} · ${c.alive ? BEH_NAME[c.beh] : c.cause}</div>
+    <div class="bar"><span>Energy</span><div class="track"><div class="fill" style="width:${energyPct}%;background:var(--treat)"></div></div><em>${energyPct}</em></div>
+    ${bar("Call: learned", callBond(c.W), 4, "var(--call)")}
+    ${bar("Call: inborn", callBond(c.g.W0), 4, "var(--born)")}
+    <div class="meta">Learns ${c.g.eta > 1.1 ? "quickly" : c.g.eta > 0.7 ? "steadily" : "slowly"} · ${c.g.speed > 56 ? "quick on its feet" : c.g.speed < 40 ? "an ambler" : "average pace"} · ${c.g.appetite > 1.1 ? "big appetite" : c.g.appetite < 0.9 ? "light eater" : "normal appetite"} · ${c.treats} treats, ${c.pets} pets</div>`;
+}
+
+function drawChart() {
+  const ch = $("chart"), g = ch.getContext("2d");
+  const w = ch.width, h = ch.height, padL = 34, padR = 10, padT = 14, padB = 28;
+  g.clearRect(0, 0, w, h);
+  g.font = "20px 'Atkinson Hyperlegible', sans-serif"; g.fillStyle = "#a9ac90";
+  const log = S.log;
+  if (!log.length) { g.fillText("Fills in at the end of each day.", padL, h / 2); return; }
+  const n = log.length, xs = (i) => padL + (n === 1 ? (w - padL - padR) / 2 : i * (w - padL - padR) / (n - 1));
+  const lo = -1, hi = 4, ys = (v) => padT + (1 - (clamp(v, lo, hi) - lo) / (hi - lo)) * (h - padT - padB);
+  const yr = (r) => padT + (1 - r) * (h - padT - padB);
+  g.strokeStyle = "#3a4329"; g.lineWidth = 1;
+  for (const v of [0, 2, 4]) { g.beginPath(); g.moveTo(padL, ys(v)); g.lineTo(w - padR, ys(v)); g.stroke(); g.fillText(v.toFixed(0), 6, ys(v) + 6); }
+  g.fillText(`day 1`, padL - 6, h - 4); if (n > 1) g.fillText(`day ${log[n - 1].day}`, w - padR - 60, h - 4);
+  const line = (key, color, yfn) => {
+    g.strokeStyle = color; g.lineWidth = 4; g.beginPath(); let started = false;
+    log.forEach((d, i) => { if (d[key] === null) return; const X = xs(i), Y = yfn(d[key]); if (!started) { g.moveTo(X, Y); started = true; } else g.lineTo(X, Y); });
+    g.stroke();
+    log.forEach((d, i) => { if (d[key] === null) return; g.fillStyle = color; g.beginPath(); g.arc(xs(i), yfn(d[key]), 5, 0, Math.PI * 2); g.fill(); });
+  };
+  line("rate", "#f2c14e", yr);
+  line("inborn", "#f19bb4", ys);
+  line("learned", "#7fd6c9", ys);
+  const last = log[n - 1];
+  $("callNote").textContent = last.rate === null
+    ? `Day ${last.day}: no whistles yet. Learned bond ${last.learned.toFixed(2)}, inborn ${last.inborn.toFixed(2)}.`
+    : `Day ${last.day}: ${Math.round(last.rate * 100)}% came when called. Learned bond ${last.learned.toFixed(2)}, inborn ${last.inborn.toFixed(2)}.`;
+}
+
+// ---------------------------------------------------------------- input
+function toWorld(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H };
+}
+cv.addEventListener("pointermove", (e) => { const p = toWorld(e); S.mouse = { ...p, in: true }; S.hover = critterAt(p.x, p.y); });
+cv.addEventListener("pointerleave", () => { S.mouse.in = false; S.hover = null; });
+cv.addEventListener("pointerdown", (e) => {
+  cv.focus();
+  const p = toWorld(e);
+  if (e.button === 2) { S.flag = { x: p.x, y: p.y, t: S.t }; return; }
+  const c = critterAt(p.x, p.y); if (c) S.focus = c;
+  tapAt(p.x, p.y);
+});
+cv.addEventListener("contextmenu", (e) => e.preventDefault());
+window.addEventListener("keydown", (e) => {
+  const tag = (e.target && e.target.tagName) || "";
+  if (tag === "INPUT" || tag === "TEXTAREA") return;
+  const k = e.key.toLowerCase();
+  if (S.night) { if (k === "enter" || k === " ") { e.preventDefault(); startDay(); } return; }
+  if (k === " ") { e.preventDefault(); whistle(); return; }
+  if (k === "e") { shoo(); return; }
+  if (k === "q") { S.flag = null; return; }
+  if (k === "n") { endDay(); return; }
+  if (k === "p") { S.paused = !S.paused; return; }
+  if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) { e.preventDefault(); S.keys.add(k); }
+});
+window.addEventListener("keyup", (e) => S.keys.delete(e.key.toLowerCase()));
+window.addEventListener("blur", () => S.keys.clear());
+
+$("bWhistle").addEventListener("click", whistle);
+$("bShoo").addEventListener("click", shoo);
+$("bNight").addEventListener("click", endDay);
+$("bPause").addEventListener("click", () => { S.paused = !S.paused; $("bPause").textContent = S.paused ? "Resume" : "Pause"; });
+$("bSound").addEventListener("click", () => { S.sound = !S.sound; $("bSound").setAttribute("aria-pressed", S.sound); if (S.sound) sfx.pop(); });
+$("dawnBtn").addEventListener("click", startDay);
+for (const [id, mode] of [["mTreat", "treat"], ["mWalk", "walk"], ["mFlag", "flag"]]) {
+  $(id).addEventListener("click", () => {
+    S.mode = mode;
+    for (const b of ["mTreat", "mWalk", "mFlag"]) $(b).setAttribute("aria-pressed", b === id);
+  });
+}
+
+// ---------------------------------------------------------------- loop
+setup();
+window.swarmkeeper = { S, whistle, tapAt, update, endDay, startDay, callBond, B };   // for tinkering from the console
+let last = performance.now();
+function frame(now) {
+  let dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (!S.paused && !S.night && !document.hidden) update(dt);
+  draw();
+  updatePanel(false);
+  requestAnimationFrame(frame);
+}
+drawChart();
+updatePanel(true);
+requestAnimationFrame(frame);
+})();
+</script>
