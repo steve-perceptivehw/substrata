@@ -17,3 +17,11 @@ name = "Trial B: patchy, scarce"
 [[run]]
 label = "trial_b_noplast"
 name = "Trial B, plasticity off"
+
+[[run]]
+label = "trial_c"
+name = "Trial C: travelling season"
+
+[[run]]
+label = "trial_c_noplast"
+name = "Trial C, plasticity off"

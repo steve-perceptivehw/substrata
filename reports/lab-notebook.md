@@ -17,8 +17,9 @@ Status key: **observed** (seen in data), **supported** (seen more than once, or 
 3. **Scarcity shrinks brains.** *Observed (trial B).* Under patchy, scarce energy, the share of the network in use fell steadily (active weights 0.22 to 0.18). With plentiful energy (trial A) it did not fall until late in the run.
 4. **Sharing was feeding the frontier.** *Observed (trial B).* Starvation began exactly when sharing collapsed, and occupancy dipped. Before the collapse, energy passed from rich patches kept edge cells alive.
 5. **The plasticity rate is under selection, not drifting.** *Supported (control run).* The genome's learning rate rose about 50% in both plastic worlds. In the plasticity-off control, where those genes do nothing, it stayed flat. The plateau near 0.0082 may still be the engine's ceiling of 0.01.
-6. **Learning did not pay for the population.** *Observed (trial B vs. plasticity off).* With learning switched off, the world held slightly more cells (about 1 to 2%), more energy per cell, and far less starvation. Trial criterion 2 is not met in this world.
-7. **Learning sped up the sharing collapse.** *Observed (1 comparison).* With learning on, sharing collapsed in a sharp sweep around generation 400. With learning off, there was no sweep: sharing eroded slowly over 1,800 generations and was still at about 0.6 per tick at the end. The plasticity rate rose during the same window as the sweep.
+6. **Over a whole run, learning did not pay for the population.** *Supported (2 of 2 worlds).* With learning switched off, both trial B and trial C held more cells (1 to 4%) with less starvation.
+7. **Learning turns the sharing collapse into a sweep.** *Supported (2 of 2 worlds).* With learning on, sharing crashed within about 150 generations (around generation 400 to 600). With learning off, it eroded gradually. The plasticity rate rose during the same window as each sweep.
+8. **In a changing world, learning paid until the sweep.** *Observed (trial C).* Before its collapse, the learning world held about 2% more cells with less starvation than the no-learning world. In trial B, which does not change, it never had that edge. The sweep then cost the learning world about 12% of its population.
 
 ---
 
@@ -116,12 +117,51 @@ Status key: **observed** (seen in data), **supported** (seen more than once, or 
 
 ---
 
+## Entry 5: Trial C, a changing world, learning on and off (2026-10-07)
+
+**Setup.** Trial B's patchy field (mean inflow 0.35), plus a season that travels across the grid: each place swings between rich and poor every 600 ticks (amplitude 0.6), about four generations per cycle. Two runs, same seed, learning on and off. 300,000 ticks each, about 1,720 and 1,830 generations. Runs `trial_c_20261007-082346` and `trial_c_noplast_20261007-110424`. (Two short false starts from the same morning are not included.)
+
+**Question.** Does learning during life pay when conditions change within a lifetime?
+
+![Trial C learning on vs. off](figures/fig6_plasticity_test_c.png)
+
+**Observed.**
+
+| | Learning on | Learning off |
+|---|---|---|
+| Population, generations 150 to 450 | 9,996 | 9,790 |
+| Starvation, generations 150 to 450 | 4.3% | 5.2% |
+| Population, generations 550 to 700 | 8,604 | 9,765 |
+| Starvation, generations 550 to 700 | 13.7% | 6.6% |
+| Population, second half of run | 9,366 | 9,696 |
+| Energy given to neighbors, second half | 0.03 | 0.27 |
+| Plasticity rate, second half | 0.0083 | 0.0046 |
+| Active weights, second half | 0.17 | 0.21 |
+
+- **Learning had an early edge.** For roughly 300 generations the learning world was larger and starved less. The same comparison in trial B showed no edge.
+- **Then the sweep.** Between generations about 450 and 600, sharing in the learning world fell from 1.3 to 0.1. Population dropped to about 8,500 and starvation tripled to 14%. It recovered slowly but never caught up with the no-learning world.
+- **Without learning, sharing eroded steadily** from 1.4 to 0.2 over the run, faster than in trial B but with no sweep.
+- **The plasticity rate rose again** to near the 0.01 ceiling, while it drifted slightly down without learning. Learning worlds also ended with smaller networks (0.17 vs. 0.21 of the maximum).
+
+**Interpretation.**
+- Trial C gives the first sign that learning helps when conditions change within a lifetime, and none when they don't. That is the expected pattern, but it rests on one pair of runs and a small margin.
+- In both worlds, the same evolutionary lever that makes learning flexible also lets a selfish lineage sweep, and the sweep costs more than learning gains. Criterion 2 is met only before the sweep.
+- **Three features of the current design limit what learning can do:**
+  1. *No reward signal.* The plasticity rule is Hebbian: it strengthens correlations but cannot tell good outcomes from bad. The Swarmkeeper prototype, which does learn usefully, uses a rule gated by reward.
+  2. *Nothing hidden.* Cells sense local inflow directly, so a fixed reflex can track the season; there is little left for learning to discover.
+  3. *Few levers.* Cells cannot move, so learning can only change messaging, sharing and reproduction.
+- The sweep is the larger problem. It is the cooperation collapse again, and Layer 2 (bonds with shared energy) was designed for exactly that.
+
+---
+
 ## Open questions and next experiments
 
 | Question | Test | Status |
 |---|---|---|
 | Does learning during life pay? | Trial B vs. trial B with plasticity off | Done: no, not in trial B |
-| Does learning pay when conditions change within a life? | Trial C with and without plasticity | Next run |
+| Does learning pay when conditions change within a life? | Trial C with and without plasticity | Done: yes until the sweep, then no |
+| Can bonds protect sharing (and learning's gains) from the sweep? | Build Layer 2; rerun trials B and C | Next build |
+| Does reward-gated learning pay where Hebbian learning did not? | Add an evolvable reward (energy-change) factor to the plasticity rule | Idea |
 | Did the plastic lineage learn to stop giving during each life? | Track transfer output vs. age in the winning lineage | Idea |
 | Is the sharing collapse kin selection? | Ladder B (Layer 3 off, everyone stays a clone): sharing should persist | Queued |
 | Is the plasticity plateau a ceiling? | Rerun trial B with `layers.eta_scale = 0.05` | Idea |

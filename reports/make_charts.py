@@ -147,6 +147,12 @@ def charts():
             ("starved_share", "Deaths by starvation", "share of deaths", 1),
             ("occupancy", "Grid occupancy", "share of sites alive", 1)],
            runs, ["trial_b", "trial_b_noplast"], need_all=True)
+    panels("fig6_plasticity_test_c.png", "Changing world (trial C), learning on vs. off",
+           [("transfer_per_cell", "Energy given to neighbors", "per cell per tick", 1),
+            ("eta_mean", "Plasticity rate (genome)", "mean |learning rate|", 1),
+            ("starved_share", "Deaths by starvation", "share of deaths", 1),
+            ("population", "Population", "living cells", 1)],
+           runs, ["trial_c", "trial_c_noplast"], need_all=True)
 
 
 if __name__ == "__main__":
