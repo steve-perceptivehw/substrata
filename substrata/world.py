@@ -49,7 +49,8 @@ class World:
         self.mutable = gn.mutable_genes(cfg.layers.layer3)
         m = cfg.mutation
         self.sigma = {"W1g": m.sigma_w, "W2g": m.sigma_w, "M1l": m.sigma_mask, "M2l": m.sigma_mask,
-                      "P": m.sigma_learn, "E": m.sigma_learn, "Eb": m.sigma_learn, "R": m.sigma_learn}
+                      "P": m.sigma_learn, "E": m.sigma_learn, "Eb": m.sigma_learn, "R": m.sigma_learn,
+                      "A": m.sigma_learn}
 
         self.rng = torch.Generator(device=device).manual_seed(cfg.seed)
         self.nbr = grid.neighbor_index(G, device)
@@ -75,6 +76,7 @@ class World:
         else:
             raise ValueError(cfg.life.seed_mode)
 
+        self.genome["A"].fill_(cfg.life.adhesion_init)   # start neutral; evolution decides how sticky to be
         self.alive = torch.rand(N, device=self.dev, generator=self.rng) < cfg.life.initial_density
         self.energy = torch.where(self.alive, cfg.energy.initial, 0.0)
         self.age = self._zeros(N, dtype=torch.int32)
@@ -111,7 +113,8 @@ class World:
     def reset_stats(self):
         self.st = {"births": 0, "deaths": 0, "starved": 0, "transfer": 0.0, "ticks": 0,
                    "inflow_in": 0.0, "cost_out": 0.0, "overflow": 0.0, "transit_loss": 0.0,
-                   "death_loss": 0.0, "bond_flow": 0.0, "leak": 0.0, "washed": 0}
+                   "death_loss": 0.0, "bond_flow": 0.0, "leak": 0.0, "washed": 0,
+                   "splits": 0, "attached_births": 0}
 
     # ------------------------------------------------------------ expression
     def _context(self, idx):
@@ -201,11 +204,16 @@ class World:
             theirs = grid.gather(o_bond, G).gather(2, self._opp.view(1, K, 1).expand(N, K, 1)).squeeze(2)
             if Ly.bond_mode == "mutual":
                 form = (o_bond > Ly.bond_form) & (theirs > Ly.bond_form)
-            elif Ly.bond_mode == "birth_only":
+            elif Ly.bond_mode in ("birth_only", "colony"):
                 form = torch.zeros_like(self.bond)          # new bonds come only from births
             else:
                 raise ValueError(f"unknown layers.bond_mode: {Ly.bond_mode}")
-            brk = (o_bond < Ly.bond_break) | (theirs < Ly.bond_break)
+            if Ly.bond_mode == "colony":
+                brk = torch.zeros_like(self.bond)           # no leaving by choice; only strain splits groups
+                if self.tick % cfg.observe.group_every == 0:
+                    self._fragment()
+            else:
+                brk = (o_bond < Ly.bond_break) | (theirs < Ly.bond_break)
             self.bond = (self.bond | form) & ~brk & alive.unsqueeze(1) & nb_alive
             bf = self.bond.float()
             nb_group = grid.gather(self.group, G)                                   # [N, K, GC]
@@ -304,10 +312,14 @@ class World:
         self.energy = e
         if q.numel():
             self._birth(q, p)
-            if Ly.bonds and (Ly.bond_at_birth or Ly.bond_mode == "birth_only"):
-                kq = kw[q]
-                self.bond[p, kq] = True
-                self.bond[q, self._opp[kq]] = True
+            if Ly.bonds and (Ly.bond_at_birth or Ly.bond_mode in ("birth_only", "colony")):
+                bp, bq, bk = p, q, kw[q]
+                if Ly.bond_mode == "colony":   # the newborn's own adhesion gene decides whether it stays
+                    stay = torch.rand(q.numel(), device=self.dev, generator=self.rng) < torch.sigmoid(self.genome["A"][q, 0])
+                    bp, bq, bk = bp[stay], bq[stay], bk[stay]
+                    self.st["attached_births"] = self.st["attached_births"] + stay.sum()
+                self.bond[bp, bk] = True
+                self.bond[bq, self._opp[bk]] = True
 
         self.st["births"] += int(q.numel())
         self.st["deaths"] = self.st["deaths"] + dying.sum()
@@ -335,6 +347,25 @@ class World:
         self.reward[q] = 0
         self.baseline[q] = 0
         self._express(q)
+
+    # ---------------------------------------------------------------- colony
+    @torch.no_grad()
+    def _fragment(self):
+        """Large groups split under strain: each bond breaks with a chance that grows with its group's size.
+        Breaking a bond in a tree-shaped group splits it into two offspring groups."""
+        Ly = self.cfg.layers
+        if not self.bond.any():
+            return
+        lab = self.find_groups()
+        size = torch.bincount(lab[self.alive], minlength=self.N + 1).float()
+        s = size[lab.clamp(max=self.N)]                                     # group size seen by each cell
+        p_break = 1 - torch.exp(-Ly.frag_strength * (s / Ly.frag_size) ** 2)
+        cut = (torch.rand(self.N, K, device=self.dev, generator=self.rng) < p_break.unsqueeze(1)) & self.bond
+        # a bond is one link seen from both ends: cut it if either end drew a break
+        mirror = cut[self.nbr, self._opp.view(1, K).expand(self.N, K)]
+        cut = cut | mirror
+        self.st["splits"] = self.st["splits"] + (cut.sum() // 2)
+        self.bond &= ~cut
 
     # ---------------------------------------------------------------- groups
     @torch.no_grad()

@@ -62,6 +62,9 @@ def compute(w) -> dict:
         bonded_frac=float((w.bond[a].any(1)).float().mean()),
         bond_flow_per_cell=st["bond_flow"] / t / n,
         reward_gate_mean=float(torch.sigmoid(g["R"][a]).mean()),   # 0 = plain correlation learning, 1 = reward-driven
+        adhesion_mean=float(torch.sigmoid(g["A"][a]).mean()),      # chance a newborn stays attached (colony mode)
+        splits_per_tick=st.get("splits", 0.0) / t,
+        attached_birth_share=st.get("attached_births", 0.0) / max(st["births"], 1),
     )
     if w.cfg.layers.bonds:
         if w.labels is None or w.tick % w.cfg.observe.group_every == 0:

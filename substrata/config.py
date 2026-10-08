@@ -63,6 +63,7 @@ class LifeCfg:
     initial_density: float = 0.3    # fraction of sites seeded
     seed_mode: str = "clone"        # "clone": one random genome everywhere; "diverse": independent random genomes
     repro_threshold: float = 20.0   # energy needed to reproduce
+    adhesion_init: float = 0.0      # starting adhesion gene (0 = newborns stay attached half the time)
     child_fraction: float = 0.5     # share of parent energy given to the child
     lifespan: int = 300             # mean maximum age (ticks); senescence keeps turnover going
     lifespan_jitter: float = 0.2    # +/- fraction
@@ -85,6 +86,12 @@ class LayersCfg:
     bond_at_birth: bool = True      # a newborn starts bonded to its parent (it can break away later)
     bond_mode: str = "mutual"       # "mutual": any two neighbors may bond by mutual choice
                                     # "birth_only": bonds form only between parent and newborn (groups are families)
+                                    # "colony": groups reproduce as groups (see below)
+    # colony mode: a newborn stays attached to its parent with probability sigmoid(adhesion gene);
+    # cells cannot break bonds by choice; groups split when they grow large (physical strain),
+    # so big groups bud off offspring groups and selection can act on whole groups
+    frag_size: float = 16.0         # group size around which splitting becomes likely
+    frag_strength: float = 0.05     # per check, each bond breaks with prob 1 - exp(-strength * (size / frag_size)^2)
     layer3: str = "on"              # "off" (no mutation), "frozen_learning", "on", "neutral" (not yet built)
 
 

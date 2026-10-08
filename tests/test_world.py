@@ -196,6 +196,36 @@ def test_bonds_protect_from_washout():
     assert p_four_bonds < 0.02 < p_unbonded
 
 
+def test_colony_mode_bonds_and_splits():
+    w = small(**{"layers.bonds": "true", "layers.bond_mode": "colony", "layers.frag_size": 6,
+                 "layers.frag_strength": 0.5, "observe.group_every": 20})
+    w.genome["A"].fill_(3.0)          # sticky: nearly every newborn stays attached
+    splits = 0
+    for _ in range(200):
+        before_bonds = int(w.bond.sum()) // 2
+        before_e = w.total_energy()
+        w.reset_stats()
+        w.step()
+        st = {k: float(v) for k, v in w.st.items()}
+        expected = before_e + st["inflow_in"] - st["cost_out"] - st["transit_loss"] - st["overflow"] - st["death_loss"]
+        assert abs(w.total_energy() - expected) < 1e-2 * max(1.0, abs(before_e))
+        assert int(w.bond.sum()) // 2 <= before_bonds + int(st["attached_births"])
+        splits += st["splits"]
+    assert w.bond.any() and splits > 0
+    w.find_groups()
+    sizes = torch.bincount(w.labels[w.alive]).float()
+    assert sizes.max() < 200, "fragmentation should keep groups from spanning the world"
+
+
+def test_colony_mode_ignores_bond_outputs():
+    # with adhesion near zero nobody stays attached, so there are no bonds at all
+    w = small(**{"layers.bonds": "true", "layers.bond_mode": "colony"})
+    w.genome["A"].fill_(-8.0)
+    for _ in range(100):
+        w.step()
+    assert not w.bond.any()
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

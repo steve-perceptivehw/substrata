@@ -1,4 +1,4 @@
-# Substrata: Design Principles (outline v0.8)
+# Substrata: Design Principles (outline v0.9)
 
 *Origin: the original Stratum concept, a cellular automaton whose cells learn and evolve their own rules.*
 
@@ -106,7 +106,9 @@
 | Inflow on empty sites is lost | lost | (not yet a switch) | let empty sites store inflow for newborns |
 | Energy in a dying cell is lost | lost | (not yet a switch) | return it to neighbors (decomposition) |
 | Bonds need mutual consent | both outputs > 0.25 to form, either < -0.25 to break | `layers.bond_form`, `layers.bond_break` | one-sided bonding (parasitic attachment) |
-| Who can bond | any neighbors by mutual choice | `layers.bond_mode` (`mutual` or `birth_only`) | birth-only bonds make every group a family |
+| Who can bond | any neighbors by mutual choice | `layers.bond_mode` (`mutual`, `birth_only`, `colony`) | birth-only bonds make every group a family; colony mode makes groups reproduce as groups |
+| Colony: staying attached is a heritable choice made at birth | adhesion starts at 50% | `life.adhesion_init`, gene A | does adhesion rise under group selection? |
+| Colony: groups split under strain as they grow | likely around 16 cells | `layers.frag_size`, `layers.frag_strength` | smaller or larger offspring groups |
 | Newborn bonded to parent | on | `layers.bond_at_birth` | off: do groups still form, and are they still kin? |
 | Energy evens out within a group | share rate 0.5 | `layers.bond_share` | 0 (bonds without sharing) vs. faster sharing |
 | Exposure: energy leaks through unbonded faces | off | `energy.exposure_leak` | on: does sealing faces keep groups together? |

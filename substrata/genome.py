@@ -12,6 +12,7 @@ Genes:
   E, Eb      expression: which hidden units are switched on, as a function of context
   R          reward gating per layer: how much the learning rule is driven by reward rather than
              plain correlation (used only when layers.reward_gating is on)
+  A          adhesion: chance (sigmoid) that a newborn stays attached to its parent (colony mode)
 """
 
 from __future__ import annotations
@@ -19,7 +20,7 @@ from __future__ import annotations
 import torch
 
 LEARNING_GENES = ("P", "E", "Eb", "R")
-STRUCTURE_GENES = ("W1g", "W2g", "M1l", "M2l")
+STRUCTURE_GENES = ("W1g", "W2g", "M1l", "M2l", "A")
 ALL_GENES = STRUCTURE_GENES + LEARNING_GENES
 
 
@@ -33,6 +34,7 @@ def shapes(d_in: int, hidden: int, d_out: int, d_ctx: int) -> dict:
         "E": (d_ctx, hidden),
         "Eb": (hidden,),
         "R": (2,),
+        "A": (1,),
     }
 
 
@@ -52,6 +54,7 @@ def random(n: int, shp: dict, device, gen: torch.Generator) -> dict:
         "E": r(*shp["E"]) * d_ctx ** -0.5,
         "Eb": r(*shp["Eb"]),
         "R": r(*shp["R"]),
+        "A": r(*shp["A"]),
     }
 
 

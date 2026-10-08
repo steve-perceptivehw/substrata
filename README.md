@@ -73,6 +73,10 @@ python -m substrata.run --config configs/trial_c_bonds.toml
 python -m substrata.run --config configs/trial_b_birthbonds.toml
 python -m substrata.run --config configs/trial_c_birthbonds.toml
 
+# groups that reproduce as groups (colony mode)
+python -m substrata.run --config configs/trial_b_colony.toml
+python -m substrata.run --config configs/trial_c_colony.toml
+
 # physical reasons to stay together (no predators): exposure through unbonded faces, or washout
 python -m substrata.run --config configs/trial_b_huddle.toml
 python -m substrata.run --config configs/trial_b_washout.toml

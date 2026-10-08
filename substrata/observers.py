@@ -125,6 +125,8 @@ CHART_GROUPS = {  # each group shares an axis, so keep similar scales together
     "group_sharing": ["bond_flow_per_cell", "transfer_per_cell"],
     "hazards": ["washed_per_tick", "deaths_per_tick"],
     "exposure": ["leak"],
+    "colony": ["adhesion_mean", "attached_birth_share"],
+    "group_splits": ["splits_per_tick"],
     "diversity": ["div_weights", "div_learning", "div_masks"],
 }
 

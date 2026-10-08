@@ -1,0 +1,43 @@
+# Colony mode: groups reproduce as groups.
+# A newborn stays attached to its parent with a probability set by its own heritable adhesion
+# gene (starting at 50%). Cells cannot break bonds by choice. Groups split under strain as they
+# grow (likely around 16 cells), so big groups bud off offspring groups. Energy evens out inside
+# a group. Groups that cooperate well can grow faster and leave more offspring groups.
+# Question: with selection acting on whole groups, does cooperation hold, and does adhesion rise?
+
+# Trial B: mild scarcity in a patchy world.
+# Same as trial A except the energy. Mean inflow drops from 0.5 to 0.35 (near what an
+# early cell spends), and it is concentrated in rich patches with poor zones between.
+# Question: does a world where location matters give brains something to earn?
+
+name = "trial_b_colony"
+seed = 0
+ticks = 300000
+
+[substrate]
+grid = 128
+inflow = 0.35
+field = "patches"
+contrast = 0.8
+patch_scale = 16
+field_seed = 1
+
+[cell]
+hidden = 32
+msg = 8
+
+[life]
+seed_mode = "clone"
+lifespan = 300
+
+[layers]
+plasticity = true
+expression = "context"
+layer3 = "on"
+bonds = true
+bond_mode = "colony"
+
+[observe]
+metrics_every = 10
+image_every = 100
+rerun = "spawn"
