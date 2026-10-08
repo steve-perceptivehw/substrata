@@ -25,3 +25,11 @@ name = "Trial C: travelling season"
 [[run]]
 label = "trial_c_noplast"
 name = "Trial C, plasticity off"
+
+[[run]]
+label = "trial_b_bonds"
+name = "Trial B with bonds"
+
+[[run]]
+label = "trial_c_bonds"
+name = "Trial C with bonds"

@@ -20,6 +20,9 @@ Status key: **observed** (seen in data), **supported** (seen more than once, or 
 6. **Over a whole run, learning did not pay for the population.** *Supported (2 of 2 worlds).* With learning switched off, both trial B and trial C held more cells (1 to 4%) with less starvation.
 7. **Learning turns the sharing collapse into a sweep.** *Supported (2 of 2 worlds).* With learning on, sharing crashed within about 150 generations (around generation 400 to 600). With learning off, it eroded gradually. The plasticity rate rose during the same window as each sweep.
 8. **In a changing world, learning paid until the sweep.** *Observed (trial C).* Before its collapse, the learning world held about 2% more cells with less starvation than the no-learning world. In trial B, which does not change, it never had that edge. The sweep then cost the learning world about 12% of its population.
+9. **Bonds as built did not protect sharing.** *Observed (2 of 2 worlds).* Open gifts still collapsed, earlier in the static world (generation ~280 vs. ~415). Bonds themselves were mostly abandoned.
+10. **Bonded groups persisted only in the changing world.** *Observed (1 comparison).* With the travelling season, about a third of cells stayed bonded, in groups averaging about 20 cells, and kept sharing energy inside them. In the static world almost every bond was gone by generation 500. A shared pool works like insurance when local conditions swing.
+11. **The starting clone bonded into one world-spanning group.** *Observed.* Early on, 99% of cells were bonded into a single connected network covering nearly the whole population: no membrane and no separate groups, just one commons.
 
 ---
 
@@ -154,13 +157,48 @@ Status key: **observed** (seen in data), **supported** (seen more than once, or 
 
 ---
 
+## Entry 6: Bonds in trials B and C (2026-10-07)
+
+**Setup.** Trials B and C with Layer 2 on: cells bond to neighbors by mutual choice (both outputs above 0.25 to form, either below -0.25 to break), energy evens out across bonds (rate 0.5), each bond costs 0.005 per tick, and a newborn starts bonded to its parent. Learning on, Layer 3 on, same seed as before. 300,000 ticks each (about 1,730 and 1,710 generations). Runs `trial_b_bonds_20261007-131912` and `trial_c_bonds_20261007-155237`.
+
+**Question.** Do bonds, as a membrane around shared energy, protect cooperation from the selfish sweep?
+
+![Bonds in B and C](figures/fig7_bonds.png)
+
+**Observed.**
+
+| Second half of the run | B | B + bonds | C | C + bonds |
+|---|---|---|---|---|
+| Population | 9,909 | 9,969 | 9,366 | 9,409 |
+| Starvation | 1.9% | 1.9% | 11.0% | 9.9% |
+| Open gifts (per cell per tick) | 0.03 | 0.04 | 0.03 | 0.07 |
+| Cells with a bond | | 2.7% | | 33% |
+| Group a typical cell is in | | 2 | | 20 |
+| Largest group | | 96 | | 326 |
+| Energy shared inside groups (per cell per tick) | | 0.002 | | 0.038 |
+
+- **At the start, nearly everything bonded into one network.** The starting clone's bond outputs were positive toward its own kind, so about 99% of cells joined one connected group spanning almost the whole population.
+- **Then bonds unraveled.** In the static world, bonded cells fell from 99% to under 5% by generation 500 and stayed there. In the changing world they fell to about 20%, then recovered to a stable third, in groups of about 20 cells (largest about 300).
+- **Open gifts collapsed anyway**, in the static world earlier than without bonds (generation ~280 vs. ~415), and at about the same time in the changing world.
+- **No overall gain.** Population and starvation were close to the runs without bonds in both worlds.
+
+**Interpretation.**
+- The first test of the membrane was not really a membrane test. Starting from a clone, the whole population bonded into one commons, which is the same dilemma as open giving with a different pipe. Cells that refused bonds kept their energy and won, as before.
+- Bonds that survived did so only where conditions swing. In the changing world, a cell in a bonded group is buffered when its own patch goes poor; that insurance seems to be worth the upkeep and the sharing. In the static world, a rich-patch cell only loses by sharing.
+- What is missing is what made multicellularity work in biology: groups that are made of relatives *and* reproduce as groups. Here a group grows at its edges but never founds new groups, and any stranger with a positive bond output can join.
+- Next: check whether surviving groups are kin (`analysis/kinship.py` on both checkpoints), then try bonds that form only at birth (clonal groups, as in snowflake yeast experiments), so every group is a family by construction.
+
+---
+
 ## Open questions and next experiments
 
 | Question | Test | Status |
 |---|---|---|
 | Does learning during life pay? | Trial B vs. trial B with plasticity off | Done: no, not in trial B |
 | Does learning pay when conditions change within a life? | Trial C with and without plasticity | Done: yes until the sweep, then no |
-| Can bonds protect sharing (and learning's gains) from the sweep? | Build Layer 2; rerun trials B and C | Next build |
+| Can bonds protect sharing (and learning's gains) from the sweep? | Build Layer 2; rerun trials B and C | Done: not as built; groups persist only in the changing world |
+| Are surviving bonded groups made of kin? | `analysis/kinship.py` on the bonds checkpoints | Next |
+| Do birth-only (clonal) bonds protect sharing? | Bonds form only between parent and child | Idea |
 | Does reward-gated learning pay where Hebbian learning did not? | Add an evolvable reward (energy-change) factor to the plasticity rule | Idea |
 | Did the plastic lineage learn to stop giving during each life? | Track transfer output vs. age in the winning lineage | Idea |
 | Is the sharing collapse kin selection? | Ladder B (Layer 3 off, everyone stays a clone): sharing should persist | Queued |

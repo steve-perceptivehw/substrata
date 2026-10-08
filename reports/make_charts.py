@@ -153,6 +153,12 @@ def charts():
             ("starved_share", "Deaths by starvation", "share of deaths", 1),
             ("population", "Population", "living cells", 1)],
            runs, ["trial_c", "trial_c_noplast"], need_all=True)
+    panels("fig7_bonds.png", "Bonds (Layer 2) in a static and a changing world",
+           [("transfer_per_cell", "Open gifts to neighbors", "per cell per tick", 1),
+            ("bonded_frac", "Cells with at least one bond", "share of cells", 1),
+            ("in_groups_5plus", "Cells in groups of 5 or more", "share of cells", 1),
+            ("bond_flow_per_cell", "Energy shared inside groups", "per cell per tick", 1)],
+           runs, ["trial_b", "trial_c", "trial_b_bonds", "trial_c_bonds"], need_all=True)
 
 
 if __name__ == "__main__":
