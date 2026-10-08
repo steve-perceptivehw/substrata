@@ -29,6 +29,8 @@ def compute(w) -> dict:
         "transit_loss": st["transit_loss"] / t,
         "overflow": st["overflow"] / t,
         "death_loss": st["death_loss"] / t,
+        "leak": st.get("leak", 0.0) / t,
+        "washed_per_tick": st.get("washed", 0.0) / t,
     }
     if n == 0:
         m.update(extinct=1)

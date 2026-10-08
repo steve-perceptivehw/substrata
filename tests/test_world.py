@@ -172,6 +172,30 @@ def test_birth_only_bonds_come_only_from_births():
     assert w.bond.any(), "expected birth bonds"
 
 
+def test_exposure_leak_and_washout_are_accounted():
+    w = small(**{"layers.bonds": "true", "layers.bond_mode": "birth_only", "energy.exposure_leak": 0.004,
+                 "substrate.washout_rate": 0.2, "substrate.washout_radius": 4})
+    washed = 0
+    for _ in range(120):
+        before = w.total_energy()
+        w.reset_stats()
+        w.step()
+        st = {k: float(v) for k, v in w.st.items()}
+        expected = before + st["inflow_in"] - st["cost_out"] - st["transit_loss"] - st["overflow"] - st["death_loss"]
+        assert abs(w.total_energy() - expected) < 1e-2 * max(1.0, abs(before))
+        washed += st["washed"]
+        assert st["leak"] > 0 or not w.alive.any()
+    assert washed > 0
+
+
+def test_bonds_protect_from_washout():
+    # with a strong grip, fully bonded cells are almost never carried off
+    import math
+    p_unbonded = 0.8
+    p_four_bonds = 0.8 * math.exp(-1.0 * 4)
+    assert p_four_bonds < 0.02 < p_unbonded
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

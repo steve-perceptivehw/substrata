@@ -1,4 +1,4 @@
-# Substrata: Design Principles (outline v0.7)
+# Substrata: Design Principles (outline v0.8)
 
 *Origin: the original Stratum concept, a cellular automaton whose cells learn and evolve their own rules.*
 
@@ -109,6 +109,8 @@
 | Who can bond | any neighbors by mutual choice | `layers.bond_mode` (`mutual` or `birth_only`) | birth-only bonds make every group a family |
 | Newborn bonded to parent | on | `layers.bond_at_birth` | off: do groups still form, and are they still kin? |
 | Energy evens out within a group | share rate 0.5 | `layers.bond_share` | 0 (bonds without sharing) vs. faster sharing |
+| Exposure: energy leaks through unbonded faces | off | `energy.exposure_leak` | on: does sealing faces keep groups together? |
+| Washout: local disturbances carry off unattached cells | off | `substrate.washout_*` | on: does attachment keep groups together? |
 | Bonds cost upkeep | 0.005 per bond per tick | `energy.bond_cost` | free bonds |
 | Cells sense local inflow directly | on | `substrate.sense_inflow` | off: cells feel conditions only through their own energy |
 | Learning is plain correlation (Hebbian) | on | `layers.reward_gating` | on: a gene (R) mixes in reward, the cell's energy change against its recent average |

@@ -73,6 +73,10 @@ python -m substrata.run --config configs/trial_c_bonds.toml
 python -m substrata.run --config configs/trial_b_birthbonds.toml
 python -m substrata.run --config configs/trial_c_birthbonds.toml
 
+# physical reasons to stay together (no predators): exposure through unbonded faces, or washout
+python -m substrata.run --config configs/trial_b_huddle.toml
+python -m substrata.run --config configs/trial_b_washout.toml
+
 # preview an inflow field without running (stats, optional picture)
 python -m substrata.inflow --config configs/trial_c.toml --png field.png
 

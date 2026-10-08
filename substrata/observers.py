@@ -123,6 +123,8 @@ CHART_GROUPS = {  # each group shares an axis, so keep similar scales together
     "bonds": ["bonds_per_cell", "bonded_frac"],
     "groups": ["group_size_mean", "group_size_max"],
     "group_sharing": ["bond_flow_per_cell", "transfer_per_cell"],
+    "hazards": ["washed_per_tick", "deaths_per_tick"],
+    "exposure": ["leak"],
     "diversity": ["div_weights", "div_learning", "div_masks"],
 }
 

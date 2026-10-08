@@ -111,7 +111,7 @@ class World:
     def reset_stats(self):
         self.st = {"births": 0, "deaths": 0, "starved": 0, "transfer": 0.0, "ticks": 0,
                    "inflow_in": 0.0, "cost_out": 0.0, "overflow": 0.0, "transit_loss": 0.0,
-                   "death_loss": 0.0, "bond_flow": 0.0}
+                   "death_loss": 0.0, "bond_flow": 0.0, "leak": 0.0, "washed": 0}
 
     # ------------------------------------------------------------ expression
     def _context(self, idx):
@@ -218,6 +218,12 @@ class World:
         cost = (En.base_cost + En.param_cost_full * self.active / self.p_max
                 + En.msg_cost * self.msg.abs().sum(1) + En.bond_cost * n_bonds) * alive_f
         e = e - cost
+        if En.exposure_leak > 0:
+            # energy escapes through exposed faces; bonded faces are sealed
+            leak = En.exposure_leak * e.clamp(min=0) * (K - n_bonds) / K * alive_f
+            e = e - leak
+            cost = cost + leak
+            self.st["leak"] = self.st["leak"] + leak.sum().detach()
         give = torch.sigmoid(o_transfer) * (En.transfer_rate / K) * e.clamp(min=0).unsqueeze(1) * occ
         give = give * alive_f.unsqueeze(1)
         received = grid.send(give, G).sum(1) * (1 - En.transfer_loss)
@@ -248,6 +254,23 @@ class World:
         self.age += alive.int()
         starved = alive & (e <= 0)
         dying = starved | (alive & (self.age >= self.lifespan))
+        Sb = cfg.substrate
+        if Sb.washout_rate > 0:
+            whole, frac = int(Sb.washout_rate), Sb.washout_rate - int(Sb.washout_rate)
+            n_ev = whole + int(float(torch.rand(1, device=self.dev, generator=self.rng)) < frac)
+            if n_ev:
+                ys = torch.arange(N, device=self.dev) // G
+                xs = torch.arange(N, device=self.dev) % G
+                hit = torch.zeros(N, dtype=torch.bool, device=self.dev)
+                for _ in range(n_ev):
+                    cy, cx = (torch.randint(0, G, (2,), device=self.dev, generator=self.rng)).tolist()
+                    dy = (ys - cy).abs(); dy = torch.minimum(dy, G - dy)
+                    dx = (xs - cx).abs(); dx = torch.minimum(dx, G - dx)
+                    hit |= (dy * dy + dx * dx) <= Sb.washout_radius ** 2
+                p_off = Sb.washout_strength * torch.exp(-Sb.washout_grip * n_bonds)
+                washed = hit & alive & ~dying & (torch.rand(N, device=self.dev, generator=self.rng) < p_off)
+                dying = dying | washed
+                self.st["washed"] = self.st["washed"] + washed.sum()
 
         # 6. reproduce into a neighbor site that was empty at the start of the tick
         empty_nbr = (1 - occ) > 0.5

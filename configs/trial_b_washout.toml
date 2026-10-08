@@ -1,0 +1,41 @@
+# Trial B with birth-only bonds, plus WASHOUT: local disturbances (like a current through a
+# biofilm) sweep random patches and carry off cells that are not held in place. Each bond
+# multiplies a cell's chance of being carried off by exp(-1), so attached cells stay.
+# No predator: attachment against being washed away, probably the oldest benefit of grouping.
+# Question: does protection from washout keep family groups (and their sharing) together?
+
+name = "trial_b_washout"
+seed = 0
+ticks = 300000
+
+[substrate]
+grid = 128
+inflow = 0.35
+field = "patches"
+contrast = 0.8
+patch_scale = 16
+field_seed = 1
+washout_rate = 0.1
+washout_radius = 6.0
+washout_strength = 0.8
+washout_grip = 1.0
+
+[cell]
+hidden = 32
+msg = 8
+
+[life]
+seed_mode = "clone"
+lifespan = 300
+
+[layers]
+plasticity = true
+expression = "context"
+layer3 = "on"
+bonds = true
+bond_mode = "birth_only"
+
+[observe]
+metrics_every = 10
+image_every = 100
+rerun = "spawn"

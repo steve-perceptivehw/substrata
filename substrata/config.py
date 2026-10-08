@@ -24,6 +24,11 @@ class SubstrateCfg:
     field_seed: int = 1             # which random patch layout
     inflow_field_file: str = ""     # .npy (grid x grid) for field = "file"
     sense_inflow: bool = True       # False hides the inflow field: cells feel it only through their own energy
+    # washout: local disturbances (like a current) that carry cells away; bonds hold cells in place
+    washout_rate: float = 0.0       # disturbance events per tick (0 = off)
+    washout_radius: float = 6.0     # size of each disturbed patch, in sites
+    washout_strength: float = 0.8   # chance an unattached cell in the patch is carried off (and dies)
+    washout_grip: float = 1.0       # each bond multiplies that chance by exp(-grip)
     season: str = "none"            # "none", "global", "wave", "drift"
     season_period: int = 2000       # ticks per season cycle ("global", "wave")
     season_amp: float = 0.5         # 0 to 1, size of the seasonal swing
@@ -49,6 +54,8 @@ class EnergyCfg:
     transfer_rate: float = 0.1      # max fraction of own energy a cell can give away per tick
     transfer_loss: float = 0.05     # fraction lost in transit
     bond_cost: float = 0.005        # per bond per tick, paid by each side (keeping a link costs bandwidth)
+    exposure_leak: float = 0.0      # share of energy lost per tick through exposed faces (0 = off);
+                                    # a bonded face is sealed, so a cell with all 8 faces bonded leaks nothing
 
 
 @dataclass
