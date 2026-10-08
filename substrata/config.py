@@ -97,6 +97,7 @@ class ObserveCfg:
         "energy", "genome", "inflow", "groups", "bonds", "age", "active_params", "messages", "transfers", "generation"])
     rerun: str = "spawn"            # "spawn" (local viewer), "save" (.rrd file), "serve" (web viewer on LAN), "none"
     serve_port: int = 9090
+    viewer_memory: str = "4GB"      # the live viewer drops its oldest data past this (the .rrd file keeps everything)
     checkpoint_every: int = 20000
     group_every: int = 100          # ticks between finding bonded groups (for metrics and the groups view)
     color_scale: float = 1.0        # genome color sensitivity to genetic drift

@@ -128,8 +128,8 @@ CHART_GROUPS = {  # each group shares an axis, so keep similar scales together
 
 
 class RerunObserver(Observer):
-    def __init__(self, mode="spawn", port=9090):
-        self.mode, self.port = mode, port
+    def __init__(self, mode="spawn", port=9090, memory_limit="4GB"):
+        self.mode, self.port, self.memory_limit = mode, port, memory_limit
 
     def start(self, world, run_dir):
         import rerun as rr
@@ -146,7 +146,11 @@ class RerunObserver(Observer):
         )
         rr.init(f"substrata-{world.cfg.name}", spawn=False)
         if self.mode == "spawn":
-            rr.spawn(default_blueprint=bp)
+            # Live viewer AND a recording on disk: if the viewer window crashes or is closed,
+            # the run keeps going and nothing is lost (open the .rrd later with: rerun <file>).
+            rr.spawn(connect=False, memory_limit=self.memory_limit, hide_welcome_screen=True)
+            rr.set_sinks(rr.GrpcSink(), rr.FileSink(os.path.join(run_dir, "recording.rrd")),
+                         default_blueprint=bp)
         elif self.mode == "save":
             rr.save(os.path.join(run_dir, "recording.rrd"), default_blueprint=bp)
         elif self.mode == "serve":

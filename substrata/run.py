@@ -99,7 +99,7 @@ def main(argv=None):
     ob = cfg.observe
     observers = [CSVObserver()]
     if ob.rerun != "none":
-        observers.append(RerunObserver(ob.rerun, ob.serve_port))
+        observers.append(RerunObserver(ob.rerun, ob.serve_port, ob.viewer_memory))
     for o in observers:
         o.start(w, run_dir)
 
