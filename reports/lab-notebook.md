@@ -21,7 +21,7 @@ Status key: **observed** (seen in data), **supported** (seen more than once, or 
 7. **Learning turns the sharing collapse into a sweep.** *Supported (2 of 2 worlds).* With learning on, sharing crashed within about 150 generations (around generation 400 to 600). With learning off, it eroded gradually. The plasticity rate rose during the same window as each sweep.
 8. **In a changing world, learning paid until the sweep.** *Observed (trial C).* Before its collapse, the learning world held about 2% more cells with less starvation than the no-learning world. In trial B, which does not change, it never had that edge. The sweep then cost the learning world about 12% of its population.
 9. **Bonds as built did not protect sharing.** *Observed (2 of 2 worlds).* Open gifts still collapsed, earlier in the static world (generation ~280 vs. ~415). Bonds themselves were mostly abandoned.
-10. **Bonded groups persisted only in the changing world.** *Observed (1 comparison).* With the travelling season, about a third of cells stayed bonded, in groups averaging about 20 cells, and kept sharing energy inside them. In the static world almost every bond was gone by generation 500. A shared pool works like insurance when local conditions swing.
+10. **Bonded groups persisted only in the changing world, and they are not families.** *Observed (1 comparison, kinship checked).* With the travelling season, about a third of cells stayed bonded, in groups averaging about 20 cells, and kept sharing energy inside them. In the static world almost every bond was gone by generation 500. A shared pool works like insurance when local conditions swing. Bonded partners are no more related than any other neighbors.
 11. **The starting clone bonded into one world-spanning group.** *Observed.* Early on, 99% of cells were bonded into a single connected network covering nearly the whole population: no membrane and no separate groups, just one commons.
 
 ---
@@ -186,7 +186,18 @@ Status key: **observed** (seen in data), **supported** (seen more than once, or 
 - The first test of the membrane was not really a membrane test. Starting from a clone, the whole population bonded into one commons, which is the same dilemma as open giving with a different pipe. Cells that refused bonds kept their energy and won, as before.
 - Bonds that survived did so only where conditions swing. In the changing world, a cell in a bonded group is buffered when its own patch goes poor; that insurance seems to be worth the upkeep and the sharing. In the static world, a rich-patch cell only loses by sharing.
 - What is missing is what made multicellularity work in biology: groups that are made of relatives *and* reproduce as groups. Here a group grows at its edges but never founds new groups, and any stranger with a positive bond output can join.
-- Next: check whether surviving groups are kin (`analysis/kinship.py` on both checkpoints), then try bonds that form only at birth (clonal groups, as in snowflake yeast experiments), so every group is a family by construction.
+- Next: try bonds that form only at birth (clonal groups, as in snowflake yeast experiments), so every group is a family by construction.
+
+**Kinship of the surviving groups** (`analysis/kinship.py`, final checkpoints; genetic distance relative to random pairs):
+
+| | Bonded neighbors | Unbonded neighbors | Bonds | Groups of 5+ | Largest group |
+|---|---|---|---|---|---|
+| B + bonds | 30% | 35% | 261 | 2 | 5 |
+| C + bonds | 26% | 26% | 2,590 | 176 | 53 |
+
+- **Neighbors are relatives** in both worlds, at about a quarter to a third of the distance between random pairs, because cells reproduce into adjacent sites.
+- **Bonds do not pick out kin beyond that.** In the changing world, bonded neighbors are exactly as related as unbonded ones. The surviving groups are not families; they are clumps of local neighbors, who happen to be loosely related.
+- So the birth bond, which starts every group as a family, does not last: bonds are re-decided each tick by both cells' outputs, and those decisions do not track relatedness. This strengthens the case for birth-only bonds.
 
 ---
 
@@ -197,7 +208,7 @@ Status key: **observed** (seen in data), **supported** (seen more than once, or 
 | Does learning during life pay? | Trial B vs. trial B with plasticity off | Done: no, not in trial B |
 | Does learning pay when conditions change within a life? | Trial C with and without plasticity | Done: yes until the sweep, then no |
 | Can bonds protect sharing (and learning's gains) from the sweep? | Build Layer 2; rerun trials B and C | Done: not as built; groups persist only in the changing world |
-| Are surviving bonded groups made of kin? | `analysis/kinship.py` on the bonds checkpoints | Next |
+| Are surviving bonded groups made of kin? | `analysis/kinship.py` on the bonds checkpoints | Done: no more than any neighbors |
 | Do birth-only (clonal) bonds protect sharing? | Bonds form only between parent and child | Idea |
 | Does reward-gated learning pay where Hebbian learning did not? | Add an evolvable reward (energy-change) factor to the plasticity rule | Idea |
 | Did the plastic lineage learn to stop giving during each life? | Track transfer output vs. age in the winning lineage | Idea |
