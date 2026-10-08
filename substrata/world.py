@@ -199,7 +199,12 @@ class World:
         if Ly.bonds:
             nb_alive = occ > 0.5
             theirs = grid.gather(o_bond, G).gather(2, self._opp.view(1, K, 1).expand(N, K, 1)).squeeze(2)
-            form = (o_bond > Ly.bond_form) & (theirs > Ly.bond_form)
+            if Ly.bond_mode == "mutual":
+                form = (o_bond > Ly.bond_form) & (theirs > Ly.bond_form)
+            elif Ly.bond_mode == "birth_only":
+                form = torch.zeros_like(self.bond)          # new bonds come only from births
+            else:
+                raise ValueError(f"unknown layers.bond_mode: {Ly.bond_mode}")
             brk = (o_bond < Ly.bond_break) | (theirs < Ly.bond_break)
             self.bond = (self.bond | form) & ~brk & alive.unsqueeze(1) & nb_alive
             bf = self.bond.float()
@@ -276,7 +281,7 @@ class World:
         self.energy = e
         if q.numel():
             self._birth(q, p)
-            if Ly.bonds and Ly.bond_at_birth:
+            if Ly.bonds and (Ly.bond_at_birth or Ly.bond_mode == "birth_only"):
                 kq = kw[q]
                 self.bond[p, kq] = True
                 self.bond[q, self._opp[kq]] = True

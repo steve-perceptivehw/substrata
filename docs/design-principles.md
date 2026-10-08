@@ -106,6 +106,7 @@
 | Inflow on empty sites is lost | lost | (not yet a switch) | let empty sites store inflow for newborns |
 | Energy in a dying cell is lost | lost | (not yet a switch) | return it to neighbors (decomposition) |
 | Bonds need mutual consent | both outputs > 0.25 to form, either < -0.25 to break | `layers.bond_form`, `layers.bond_break` | one-sided bonding (parasitic attachment) |
+| Who can bond | any neighbors by mutual choice | `layers.bond_mode` (`mutual` or `birth_only`) | birth-only bonds make every group a family |
 | Newborn bonded to parent | on | `layers.bond_at_birth` | off: do groups still form, and are they still kin? |
 | Energy evens out within a group | share rate 0.5 | `layers.bond_share` | 0 (bonds without sharing) vs. faster sharing |
 | Bonds cost upkeep | 0.005 per bond per tick | `energy.bond_cost` | free bonds |

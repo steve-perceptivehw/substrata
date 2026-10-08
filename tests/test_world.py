@@ -161,6 +161,17 @@ def test_reward_gating_and_hidden_inflow_run_and_conserve():
     assert not torch.allclose(w.W1, w0)
 
 
+def test_birth_only_bonds_come_only_from_births():
+    w = small(**{"layers.bonds": "true", "layers.bond_mode": "birth_only"})
+    for _ in range(120):
+        before = int(w.bond.sum()) // 2
+        w.reset_stats()
+        w.step()
+        after = int(w.bond.sum()) // 2
+        assert after <= before + int(w.st["births"])
+    assert w.bond.any(), "expected birth bonds"
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

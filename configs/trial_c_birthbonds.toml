@@ -1,0 +1,45 @@
+# Same as the matching trial with bonds, except bonds form ONLY between parent and newborn.
+# Strangers can never join, so every bonded group is a family (clonal groups, as in snowflake
+# yeast). Either side can still break a bond, which splits a group in two.
+# Question: do family groups protect sharing from the selfish sweep?
+
+# Trial C: trial B plus a season that travels across the world.
+# Each place cycles between rich and poor every 600 ticks (about two lifespans),
+# so conditions change within a cell's lifetime. That is the pressure that should
+# favor learning during life over fixed behavior.
+# Try season = "global" (everywhere at once) or "drift" (patches slide) for variants.
+
+name = "trial_c_birthbonds"
+seed = 0
+ticks = 300000
+
+[substrate]
+grid = 128
+inflow = 0.35
+field = "patches"
+contrast = 0.8
+patch_scale = 16
+field_seed = 1
+season = "wave"
+season_period = 600
+season_amp = 0.6
+
+[cell]
+hidden = 32
+msg = 8
+
+[life]
+seed_mode = "clone"
+lifespan = 300
+
+[layers]
+plasticity = true
+expression = "context"
+layer3 = "on"
+bonds = true
+bond_mode = "birth_only"
+
+[observe]
+metrics_every = 10
+image_every = 100
+rerun = "spawn"

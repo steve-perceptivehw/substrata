@@ -69,6 +69,10 @@ python -m substrata.run --config configs/trial_c.toml
 python -m substrata.run --config configs/trial_b_bonds.toml
 python -m substrata.run --config configs/trial_c_bonds.toml
 
+# bonds only between parent and newborn (every group is a family)
+python -m substrata.run --config configs/trial_b_birthbonds.toml
+python -m substrata.run --config configs/trial_c_birthbonds.toml
+
 # preview an inflow field without running (stats, optional picture)
 python -m substrata.inflow --config configs/trial_c.toml --png field.png
 

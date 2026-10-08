@@ -76,6 +76,8 @@ class LayersCfg:
     bond_break: float = -0.25       # and breaks when either side's output drops below this
     bond_share: float = 0.5         # how fast energy evens out across a bond (0 = not at all, 1 = fast)
     bond_at_birth: bool = True      # a newborn starts bonded to its parent (it can break away later)
+    bond_mode: str = "mutual"       # "mutual": any two neighbors may bond by mutual choice
+                                    # "birth_only": bonds form only between parent and newborn (groups are families)
     layer3: str = "on"              # "off" (no mutation), "frozen_learning", "on", "neutral" (not yet built)
 
 
