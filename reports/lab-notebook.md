@@ -21,6 +21,8 @@ Status key: **observed** (seen in data), **supported** (seen more than once, or 
 7. **Learning turns the sharing collapse into a sweep.** *Supported (2 of 2 worlds).* With learning on, sharing crashed within about 150 generations (around generation 400 to 600). With learning off, it eroded gradually. The plasticity rate rose during the same window as each sweep.
 8. **In a changing world, learning paid until the sweep.** *Observed (trial C).* Before its collapse, the learning world held about 2% more cells with less starvation than the no-learning world. In trial B, which does not change, it never had that edge. The sweep then cost the learning world about 12% of its population.
 9. **Bonds did not protect sharing, whether open to any neighbor or limited to families.** *Observed (3 runs).* Open gifts still collapsed. Any-neighbor bonds brought the collapse earlier (generation ~280 vs. ~415 in the static world); birth-only bonds delayed it (to ~610) but did not stop it. In every case cells broke their bonds and groups shrank to a few cells.
+12. **Flexible bonds, not family bonds, are what survive in a changing world.** *Observed (1 comparison).* With birth-only bonds in trial C, bonds vanished by generation 400 and sharing collapsed earliest of any C run. With any-neighbor bonds, a third of cells stayed in groups. Insurance needs to be able to re-form with whoever is next door.
+13. **A physical reason to stay bonded (exposure) delayed the collapse but did not stop it.** *Observed (1 run).* Sharing held until generation ~650, the latest yet, and bonds recovered slightly late in the run (15% vs. 5%), but groups stayed tiny and the leak cost the world about 12% of its population.
 10. **Bonded groups persisted only in the changing world, and they are not families.** *Observed (1 comparison, kinship checked).* With the travelling season, about a third of cells stayed bonded, in groups averaging about 20 cells, and kept sharing energy inside them. In the static world almost every bond was gone by generation 500. A shared pool works like insurance when local conditions swing. Bonded partners are no more related than any other neighbors.
 11. **The starting clone bonded into one world-spanning group.** *Observed.* Early on, 99% of cells were bonded into a single connected network covering nearly the whole population: no membrane and no separate groups, just one commons.
 
@@ -232,6 +234,47 @@ Status key: **observed** (seen in data), **supported** (seen more than once, or 
 
 ---
 
+## Entry 8: Exposure in the static world; birth-only bonds in the changing world (2026-10-08)
+
+**Setup.** Two overnight runs, 300,000 ticks each.
+- `trial_b_huddle_20261007-224734`: trial B with birth-only bonds plus exposure. Each tick a cell loses 0.4% of its energy for each of its 8 faces that is not bonded, divided by 8; bonded faces are sealed. About 1,770 generations.
+- `trial_c_birthbonds_20261007-222121`: trial C with birth-only bonds. About 1,700 generations.
+
+![Exposure in the static world](figures/fig9_exposure.png)
+
+![Bonds in the changing world](figures/fig10_changing_bonds.png)
+
+**Observed: exposure (static world).**
+
+| | B | B + birth-only | B + birth-only + exposure |
+|---|---|---|---|
+| Open gifts collapse | generation ~415 | ~610 | ~650 |
+| Cells bonded, generation ~50 / ~800 / end | | 58% / 4% / 6% | 58% / 9% / 15% |
+| Population, second half | 9,909 | 9,457 | 8,657 |
+| Starvation, second half | 1.8% | 2.3% | 0.5% |
+
+- The leak was a large cost to the world: about 900 energy per tick in total, roughly a quarter of what an average cell takes in. The population ran about 12% smaller throughout.
+- Bonds still dwindled, but less: bottoming at 9% and recovering to 15% by the end, against 4 to 6% without exposure. Groups stayed at two or three cells.
+- Sharing held the longest of any run with learning on, then collapsed the same way.
+
+**Observed: birth-only bonds (changing world).**
+
+| | C | C + any-neighbor bonds | C + birth-only bonds |
+|---|---|---|---|
+| Open gifts collapse | generation ~485 | ~480 | ~310 |
+| Cells bonded, second half | | 33% | 5% |
+| Starvation, generations 550 to 700 | 13.7% | ~12% | ~14% |
+| Population, second half | 9,366 | 9,409 | 9,511 |
+
+- Birth-only bonds made things worse in the changing world: bonds vanished by generation 400 and sharing collapsed earlier than in any other C run.
+
+**Interpretation.**
+- **Why exposure was weak:** with birth-only bonds, a group is a tree of parents and children, so a typical cell holds one or two bonds. Sealing one or two of eight faces saves only an eighth to a quarter of the leak, a small private gain against the bond's upkeep and the energy it shares away. The design gives each bond too little to protect.
+- **Why birth-only failed in the changing world:** the groups that survived in trial C with any-neighbor bonds were insurance pools among neighbors, re-formed as the season moved. Birth-only bonds cannot re-form, so once broken they are gone.
+- **Across all bond runs so far:** every way of making groups has slowed the collapse of sharing at best, never stopped it. In each case, leaving or not sharing is better for the individual cell than staying, and nothing makes a group, as a unit, outcompete other groups. Theory of the major transitions says that is the missing piece: groups need to reproduce as groups, so that groups with better internal cooperation leave more descendant groups.
+
+---
+
 ## Open questions and next experiments
 
 | Question | Test | Status |
@@ -240,8 +283,9 @@ Status key: **observed** (seen in data), **supported** (seen more than once, or 
 | Does learning pay when conditions change within a life? | Trial C with and without plasticity | Done: yes until the sweep, then no |
 | Can bonds protect sharing (and learning's gains) from the sweep? | Build Layer 2; rerun trials B and C | Done: not as built; groups persist only in the changing world |
 | Are surviving bonded groups made of kin? | `analysis/kinship.py` on the bonds checkpoints | Done: no more than any neighbors |
-| Do birth-only (clonal) bonds protect sharing? | Bonds form only between parent and child | Static world: delayed the collapse, did not stop it. Changing world: next run |
-| What would make being in a group pay? | Add a group-level benefit or hazard (see options in chat) | Open |
+| Do birth-only (clonal) bonds protect sharing? | Bonds form only between parent and child | No: delayed in the static world, worse in the changing world |
+| What would make being in a group pay? | Exposure (done: weak, delayed the collapse); washout (built, not run) | Open |
+| Do groups that reproduce as groups hold onto cooperation? | Group fragmentation / propagules | Idea |
 | Does reward-gated learning pay where Hebbian learning did not? | Add an evolvable reward (energy-change) factor to the plasticity rule | Idea |
 | Did the plastic lineage learn to stop giving during each life? | Track transfer output vs. age in the winning lineage | Idea |
 | Is the sharing collapse kin selection? | Ladder B (Layer 3 off, everyone stays a clone): sharing should persist | Queued |

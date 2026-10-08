@@ -165,6 +165,18 @@ def charts():
             ("starved_share", "Deaths by starvation", "share of deaths", 1),
             ("population", "Population", "living cells", 1)],
            runs, ["trial_b", "trial_b_bonds", "trial_b_birthbonds"], need_all=True)
+    panels("fig9_exposure.png", "Static world: does a physical reason to stay bonded help?",
+           [("transfer_per_cell", "Open gifts to neighbors", "per cell per tick", 1),
+            ("bonded_frac", "Cells with at least one bond", "share of cells", 1),
+            ("starved_share", "Deaths by starvation", "share of deaths", 1),
+            ("population", "Population", "living cells", 1)],
+           runs, ["trial_b", "trial_b_birthbonds", "trial_b_huddle"], need_all=True)
+    panels("fig10_changing_bonds.png", "Changing world: any-neighbor vs. birth-only bonds",
+           [("transfer_per_cell", "Open gifts to neighbors", "per cell per tick", 1),
+            ("bonded_frac", "Cells with at least one bond", "share of cells", 1),
+            ("starved_share", "Deaths by starvation", "share of deaths", 1),
+            ("population", "Population", "living cells", 1)],
+           runs, ["trial_c", "trial_c_bonds", "trial_c_birthbonds"], need_all=True)
 
 
 if __name__ == "__main__":
