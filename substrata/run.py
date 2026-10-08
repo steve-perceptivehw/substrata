@@ -50,7 +50,7 @@ def load_checkpoint(path: str, device) -> World:
     w.M2 = (w.genome["M2l"] > 0).float()
     w.tick = ck["tick"]
     w.inflow = w.field.at(w.tick)
-    w.rng.set_state(ck["rng"])
+    w.rng.set_state(ck["rng"].cpu())   # generator state must be a CPU tensor, even for a CUDA generator
     return w
 
 
