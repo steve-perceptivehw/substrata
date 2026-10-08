@@ -66,6 +66,8 @@ def render(w, channels) -> dict:
         elif ch == "bonds":
             img = scalar(w.bond.float().sum(1), 0, 4)
         elif ch == "groups":
+            if w.cfg.layers.bonds:
+                w.find_groups()          # fresh labels for this frame
             if w.labels is None or not w.cfg.layers.bonds:
                 img = np.zeros((G, G, 3), dtype=np.uint8) + 60
             else:

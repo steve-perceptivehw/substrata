@@ -23,8 +23,10 @@ Status key: **observed** (seen in data), **supported** (seen more than once, or 
 9. **Bonds did not protect sharing, whether open to any neighbor or limited to families.** *Observed (3 runs).* Open gifts still collapsed. Any-neighbor bonds brought the collapse earlier (generation ~280 vs. ~415 in the static world); birth-only bonds delayed it (to ~610) but did not stop it. In every case cells broke their bonds and groups shrank to a few cells.
 12. **Flexible bonds, not family bonds, are what survive in a changing world.** *Observed (1 comparison).* With birth-only bonds in trial C, bonds vanished by generation 400 and sharing collapsed earliest of any C run. With any-neighbor bonds, a third of cells stayed in groups. Insurance needs to be able to re-form with whoever is next door.
 13. **A physical reason to stay bonded (exposure) delayed the collapse but did not stop it.** *Observed (1 run).* Sharing held until generation ~650, the latest yet, and bonds recovered slightly late in the run (15% vs. 5%), but groups stayed tiny and the leak cost the world about 12% of its population.
-10. **Bonded groups persisted only in the changing world, and they are not families.** *Observed (1 comparison, kinship checked).* With the travelling season, about a third of cells stayed bonded, in groups averaging about 20 cells, and kept sharing energy inside them. In the static world almost every bond was gone by generation 500. A shared pool works like insurance when local conditions swing. Bonded partners are no more related than any other neighbors.
+10. **Bonded groups persisted only in the changing world, and they are not families.** *Observed (1 comparison, kinship checked).* With the travelling season, about a third of cells stayed bonded, in groups where a typical cell had about 9 group-mates (largest about 180; corrected 2026-10-08, see entry 9), and kept sharing energy inside them. In the static world almost every bond was gone by generation 500. A shared pool works like insurance when local conditions swing. Bonded partners are no more related than any other neighbors.
 11. **The starting clone bonded into one world-spanning group.** *Observed.* Early on, 99% of cells were bonded into a single connected network covering nearly the whole population: no membrane and no separate groups, just one commons.
+14. **When cells cannot leave their group, a changing world selects for staying together.** *Observed (1 run).* In colony mode, the adhesion gene rose from 0.50 to about 0.61 over the run in trial C, sharing inside groups persisted, and the world ended about 4.5% larger than plain trial C. In the static world adhesion first fell, then recovered. Open gifts still collapsed in both.
+15. **No design so far has produced large or long-lived groups.** *Supported (6 bond runs, corrected metrics).* Outside the early world-spanning commons, a typical bonded cell has been in a group of 1 to 2 cells (about 9 at most, in the changing world with any-neighbor bonds). Groups break when members die, so group-level selection has not really been tested.
 
 ---
 
@@ -175,12 +177,12 @@ Status key: **observed** (seen in data), **supported** (seen more than once, or 
 | Starvation | 1.9% | 1.9% | 11.0% | 9.9% |
 | Open gifts (per cell per tick) | 0.03 | 0.04 | 0.03 | 0.07 |
 | Cells with a bond | | 2.7% | | 33% |
-| Group a typical cell is in | | 2 | | 20 |
-| Largest group | | 96 | | 326 |
+| Group a typical cell is in | | 1.0 | | 9 |
+| Largest group | | 4 | | ~180 |
 | Energy shared inside groups (per cell per tick) | | 0.002 | | 0.038 |
 
 - **At the start, nearly everything bonded into one network.** The starting clone's bond outputs were positive toward its own kind, so about 99% of cells joined one connected group spanning almost the whole population.
-- **Then bonds unraveled.** In the static world, bonded cells fell from 99% to under 5% by generation 500 and stayed there. In the changing world they fell to about 20%, then recovered to a stable third, in groups of about 20 cells (largest about 300).
+- **Then bonds unraveled.** In the static world, bonded cells fell from 99% to under 5% by generation 500 and stayed there. In the changing world they fell to about 20%, then recovered to a stable third, in groups of about 9 cells (largest about 180). *(Group sizes corrected 2026-10-08; see the correction in entry 9.)*
 - **Open gifts collapsed anyway**, in the static world earlier than without bonds (generation ~280 vs. ~415), and at about the same time in the changing world.
 - **No overall gain.** Population and starvation were close to the runs without bonds in both worlds.
 
@@ -219,11 +221,11 @@ Status key: **observed** (seen in data), **supported** (seen more than once, or 
 | Cells bonded at generation ~50 | | 99% | 58% |
 | Cells bonded at generation ~450 | | 2% | 29% |
 | Cells bonded, second half | | 2.7% | 4.9% |
-| Typical group size | | one giant group, then ~2 | ~3, then ~2.4 |
+| Typical group size | | one giant group, then ~1 | ~2.3, then ~1.05 |
 | Population, second half | 9,909 | 9,969 | 9,457 |
 | Starvation, second half | 1.8% | 1.9% | 2.3% |
 
-- **No giant commons this time.** Groups started as small families (typical 3 to 4 cells, largest about 100).
+- **No giant commons this time.** Groups started as small families (typical 2 to 3 cells, largest about 15; corrected, see entry 9).
 - **But they shrank steadily.** Cells broke their bonds a little at a time, from 58% bonded to 29% by generation 450 and to 4% by generation 800.
 - **Open giving held longest** of any run with learning on, about 200 generations past the plain trial B collapse, then collapsed in the same kind of sweep. The world then settled about 5% smaller than trial B.
 
@@ -254,7 +256,7 @@ Status key: **observed** (seen in data), **supported** (seen more than once, or 
 | Starvation, second half | 1.8% | 2.3% | 0.5% |
 
 - The leak was a large cost to the world: about 900 energy per tick in total, roughly a quarter of what an average cell takes in. The population ran about 12% smaller throughout.
-- Bonds still dwindled, but less: bottoming at 9% and recovering to 15% by the end, against 4 to 6% without exposure. Groups stayed at two or three cells.
+- Bonds still dwindled, but less: bottoming at 9% and recovering to 15% by the end, against 4 to 6% without exposure. Groups stayed at one or two cells.
 - Sharing held the longest of any run with learning on, then collapsed the same way.
 
 **Observed: birth-only bonds (changing world).**
@@ -275,6 +277,45 @@ Status key: **observed** (seen in data), **supported** (seen more than once, or 
 
 ---
 
+## Entry 9: Colony bonds, groups that reproduce as groups (2026-10-08)
+
+**Setup.** Trials B and C with `layers.bond_mode = "colony"`. A newborn stays bonded to its parent with a chance set by a new heritable gene, adhesion (starting at 0.5 for everyone). Cells cannot break bonds by choice. Instead, groups split under strain: every 100 ticks each bond breaks with a chance that rises with the square of the group's size (around 16 cells it becomes likely). The idea is that groups grow, bud off offspring groups, and selection can act on whole groups. Everything else as in entry 6. 300,000 ticks each, about 1,790 and 1,770 generations. Runs `trial_b_colony` and `trial_c_colony`.
+
+**Question.** If cells cannot walk away from their group, does cooperation hold, and does selection push adhesion up or down?
+
+![Colony bonds](figures/fig11_colony.png)
+
+**Observed.**
+
+| Second half of the run | B | B + colony | C | C + colony |
+|---|---|---|---|---|
+| Open gifts collapse (below 1.0 per tick) | generation ~415 | ~345 | ~485 | ~373 |
+| Adhesion gene (start 0.50) | | 0.43 (end 0.51) | | 0.59 (end 0.61) |
+| Cells with a bond | | 35% | | 49% |
+| Energy shared inside groups (per cell per tick) | | 0.018 | | 0.024 |
+| Group a typical cell is in | | 1.5 | | 1.9 |
+| Largest group | | ~7 | | ~11 |
+| Population | 9,909 | 9,803 | 9,366 | 9,686 |
+| Population, last tenth of the run | 9,981 | 9,837 | 9,541 | 9,974 |
+| Starvation | 1.8% | 2.1% | 11.0% | 12.2% |
+
+- **In the changing world, selection pushed adhesion up, steadily, for the whole run** (0.50 to about 0.61). This is the first time in any run that selection has favored a group trait. Bonded cells rose from 44% to about 51%.
+- **In the static world, adhesion fell during the sweep** (0.50 to 0.40 between generations 250 and 500), stayed there for about 800 generations, then climbed back to 0.51 in the last 400.
+- **Sharing inside groups never unraveled**, unlike every earlier bond design, because no one could leave. In the changing world it peaked during the open-gift collapse (generation ~450).
+- **Open gifts still collapsed**, and earlier than without bonds in both worlds.
+- **The changing world recovered better.** Its post-collapse dip was shallower (lowest 8,655 vs. 8,449 cells), and by the end it held about 4.5% more cells than plain trial C, the first bond design to beat its no-bond control. Starvation was slightly higher, so the gain came from more births rather than fewer deaths.
+- **Groups stayed tiny.** A typical cell sat in a group of 1.5 to 2 cells, and the largest was about 7 to 13. Strain splits almost never happened (0.05 to 0.13 per tick, against about 30 births per tick).
+
+**Interpretation.**
+- Taking away the option to leave moved the dilemma from "stay or go" to "how often to keep my offspring attached", and in the changing world the answer was "more often". Lineages that keep a few cells pooled are buffered when the season passes over them. This is insurance favored at the level of the lineage, not just the cell.
+- **But this was not yet group reproduction.** Groups are short chains of parents and children, and when any cell dies (every cell lives about 300 ticks) its bonds go with it and the chain breaks. Groups fall apart from deaths long before they grow big enough to split under strain, so the budding mechanism never engaged. A group lasts about one lifetime; there is no lineage of groups for selection to act on.
+- In the static world, the adhesion dip during the sweep may be hitchhiking (the lineage that stopped giving happened to be less adhesive) or a real cost of being attached; the late recovery could be drift. One run cannot tell these apart.
+- **Next:** make groups compact and durable so they can actually grow to splitting size. Two changes: (1) a newborn that stays attached bonds to every neighboring member of its parent's group, not just the parent, so groups are clumps rather than chains; (2) when a cell dies, its bonded neighbors that touch each other bond together, so a death leaves a hole rather than a break. Compact groups would also make exposure meaningful, since cells inside a clump have most faces bonded.
+
+**Correction: group sizes in entries 6 to 8.** The group-size metrics (typical group, largest group, cells in groups of 5+) were wrong in every bond run before today. Groups were found every 100 ticks but the labels were reused at every metric row in between, and every cell born since the last search inherited a stale label, so newborns were counted as one large false group. Only rows taken right after a fresh search were correct. The metric now recomputes on schedule and repeats the last fresh value in between, the chart data were rebuilt from the fresh rows only, and a test checks it. Corrected values are in the tables above. The main changes: in the changing world with any-neighbor bonds, the typical group was about 9 cells (not 20) and the largest about 180 (not 326); birth-only groups started at 2 to 3 cells with the largest about 15 (not 3 to 4 and 100). Cells bonded, energy shared inside groups, and the kinship results were never affected, and none of the conclusions change: groups were smaller than reported, which only strengthens "groups stayed tiny".
+
+---
+
 ## Open questions and next experiments
 
 | Question | Test | Status |
@@ -285,11 +326,12 @@ Status key: **observed** (seen in data), **supported** (seen more than once, or 
 | Are surviving bonded groups made of kin? | `analysis/kinship.py` on the bonds checkpoints | Done: no more than any neighbors |
 | Do birth-only (clonal) bonds protect sharing? | Bonds form only between parent and child | No: delayed in the static world, worse in the changing world |
 | What would make being in a group pay? | Exposure (done: weak, delayed the collapse); washout (built, not run) | Open |
-| Do groups that reproduce as groups hold onto cooperation? | Group fragmentation / propagules | Idea |
+| Do groups that reproduce as groups hold onto cooperation? | Colony mode (adhesion gene, splitting under strain) | Built and run; groups stayed at 1 to 2 cells, so splitting never engaged. Not yet tested |
+| Can groups grow large enough to reproduce as groups? | Compact colonies: newborns bond to all neighboring group-mates; deaths heal over | Next build |
 | Does reward-gated learning pay where Hebbian learning did not? | Add an evolvable reward (energy-change) factor to the plasticity rule | Idea |
 | Did the plastic lineage learn to stop giving during each life? | Track transfer output vs. age in the winning lineage | Idea |
 | Is the sharing collapse kin selection? | Ladder B (Layer 3 off, everyone stays a clone): sharing should persist | Queued |
 | Is the plasticity plateau a ceiling? | Rerun trial B with `layers.eta_scale = 0.05` | Idea |
-| Can bonds rescue cooperation? | Build Layer 2 (bonds with shared energy pools); rerun trial B | Next build |
-| Do changing conditions favor learners? | Trial C (travelling season, 600-tick cycle); sweep the period | Ready |
+| Can bonds rescue cooperation? | Build Layer 2 (bonds with shared energy pools); rerun trial B | Done: see entries 6 to 9 |
+| Do changing conditions favor learners? | Trial C (travelling season, 600-tick cycle); sweep the period | Trial C done (entry 5); period sweep not run |
 | Do messages carry information? | Shuffle messages between cells mid-run; does anything change? | Idea |

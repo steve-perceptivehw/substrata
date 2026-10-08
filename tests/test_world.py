@@ -226,6 +226,17 @@ def test_colony_mode_ignores_bond_outputs():
     assert not w.bond.any()
 
 
+def test_group_metrics_are_fresh():
+    from substrata import metrics as MX
+    w = small(**{"layers.bonds": "true", "layers.bond_mode": "birth_only", "observe.group_every": 50})
+    for _ in range(150):
+        w.step()
+        if w.tick % 50 == 0:
+            m = MX.compute(w)
+            lab = w.find_groups()[w.alive]
+            assert m["group_size_max"] == int(torch.bincount(lab).max())
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

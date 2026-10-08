@@ -67,15 +67,18 @@ def compute(w) -> dict:
         attached_birth_share=st.get("attached_births", 0.0) / max(st["births"], 1),
     )
     if w.cfg.layers.bonds:
-        if w.labels is None or w.tick % w.cfg.observe.group_every == 0:
-            w.find_groups()
-        lab = w.labels[a]
-        sizes = torch.bincount(lab, minlength=w.N + 1).float()
-        sizes = sizes[sizes > 0]
-        m.update(
-            group_size_mean=float((sizes ** 2).sum() / sizes.sum()),   # the size of the group a typical cell is in
-            group_size_max=int(sizes.max()),
-            groups_5plus=int((sizes >= 5).sum()),
-            in_groups_5plus=float(sizes[sizes >= 5].sum() / n),
-        )
+        # Group sizes need labels computed from the bonds as they are NOW. Labels kept from an earlier
+        # tick lump every cell born since then into one false group, so recompute every group_every
+        # ticks and repeat the last fresh values in between.
+        if getattr(w, "_gstats", None) is None or w.tick % w.cfg.observe.group_every == 0:
+            lab = w.find_groups()[a]
+            sizes = torch.bincount(lab, minlength=w.N + 1).float()
+            sizes = sizes[sizes > 0]
+            w._gstats = dict(
+                group_size_mean=float((sizes ** 2).sum() / sizes.sum()),   # the size of the group a typical cell is in
+                group_size_max=int(sizes.max()),
+                groups_5plus=int((sizes >= 5).sum()),
+                in_groups_5plus=float(sizes[sizes >= 5].sum() / n),
+            )
+        m.update(w._gstats)
     return m

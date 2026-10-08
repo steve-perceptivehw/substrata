@@ -20,6 +20,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np
 import pandas as pd  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -35,7 +36,12 @@ SURFACE, INK, INK2, GRID = "#fcfcfb", "#0b0b0b", "#52514e", "#e6e5e0"
 def ingest(src: str, label: str, every: int = 500, window: int = 50):
     path = os.path.join(src, "metrics.csv") if os.path.isdir(src) else src
     df = pd.read_csv(path)
-    num = df.select_dtypes("number")
+    num = df.select_dtypes("number").copy()
+    # Group-size columns are only valid on rows where groups were freshly found (every 100 ticks);
+    # runs before 2026-10-08 logged stale values in between, so keep only the fresh rows.
+    for col in ("group_size_mean", "group_size_max", "groups_5plus", "in_groups_5plus"):
+        if col in num:
+            num.loc[num["tick"] % 100 != 0, col] = float("nan")
     sm = num.rolling(window, min_periods=1, center=True).mean()
     sm["tick"] = df["tick"]
     out = sm[sm["tick"] % every == 0].reset_index(drop=True)
@@ -76,21 +82,33 @@ def panels(fname, suptitle, specs, runs, labels, x="generation_mean", xlabel="Ge
     if not have or (need_all and len(have) < len(labels)):
         print("skip", fname, "(waiting for runs)")
         return
+    # each run keeps its registry color, unless another run in this figure already has it
+    colors, used = {}, set()
+    for l in have:
+        c = runs[l]["color"]
+        if c in used:
+            c = next(s for s in SERIES if s not in used)
+        colors[l] = c
+        used.add(c)
     n = len(specs)
-    fig, axes = plt.subplots(1, n, figsize=(4.2 * n, 3.4), facecolor=SURFACE)
-    axes = [axes] if n == 1 else axes
+    rows = 1 if n <= 4 else 2
+    cols = -(-n // rows)
+    fig, axes = plt.subplots(rows, cols, figsize=(4.2 * cols, 3.4 * rows), facecolor=SURFACE)
+    axes = list(np.atleast_1d(axes).ravel())
+    for ax in axes[n:]:
+        ax.axis("off")
     for ax, (col, title, ylab, scale) in zip(axes, specs):
         for l in have:
             r = runs[l]
             if col in r["df"]:
-                ax.plot(r["df"][x], r["df"][col] * scale, color=r["color"], lw=2, label=r["name"])
+                ax.plot(r["df"][x], r["df"][col] * scale, color=colors[l], lw=2, label=r["name"])
         style(ax, title, ylab)
         ax.set_xlabel(xlabel, fontsize=9, color=INK2)
     fig.suptitle(suptitle, x=0.01, ha="left", fontsize=12.5, color=INK, fontweight="bold")
     handles, names = axes[0].get_legend_handles_labels()
     fig.legend(handles, names, loc="lower center", ncol=len(have), frameon=False, fontsize=9,
-               labelcolor=INK2, bbox_to_anchor=(0.5, -0.02))
-    fig.tight_layout(rect=(0, 0.07, 1, 0.95))
+               labelcolor=INK2, bbox_to_anchor=(0.5, -0.02 if rows == 1 else 0.0))
+    fig.tight_layout(rect=(0, 0.07 if rows == 1 else 0.05, 1, 1 - 0.05 / rows))
     os.makedirs(FIGS, exist_ok=True)
     fig.savefig(os.path.join(FIGS, fname), dpi=150, facecolor=SURFACE)
     plt.close(fig)
@@ -177,6 +195,14 @@ def charts():
             ("starved_share", "Deaths by starvation", "share of deaths", 1),
             ("population", "Population", "living cells", 1)],
            runs, ["trial_c", "trial_c_bonds", "trial_c_birthbonds"], need_all=True)
+    panels("fig11_colony.png", "Colony bonds: newborns stay attached by an evolving adhesion gene",
+           [("transfer_per_cell", "Open gifts to neighbors", "per cell per tick", 1),
+            ("adhesion_mean", "Adhesion gene", "chance a newborn stays attached", 1),
+            ("bonded_frac", "Cells with at least one bond", "share of cells", 1),
+            ("bond_flow_per_cell", "Energy shared inside groups", "per cell per tick", 1),
+            ("group_size_mean", "Group a typical cell is in", "cells", 1),
+            ("population", "Population", "living cells", 1)],
+           runs, ["trial_b", "trial_c", "trial_b_colony", "trial_c_colony"], need_all=True)
 
 
 if __name__ == "__main__":

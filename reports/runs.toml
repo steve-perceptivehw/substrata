@@ -45,3 +45,11 @@ name = "Trial B, birth-only bonds + exposure"
 [[run]]
 label = "trial_c_birthbonds"
 name = "Trial C, birth-only bonds"
+
+[[run]]
+label = "trial_b_colony"
+name = "Trial B, colony bonds"
+
+[[run]]
+label = "trial_c_colony"
+name = "Trial C, colony bonds"
